@@ -27,7 +27,7 @@ console_error_panic_hook.workspace = true
 js-sys.workspace = true
 ratzilla.workspace = true
 wasm-bindgen.workspace = true
-web-sys.workspace = true
+web-sys = { workspace = true, features = ["DomException", "Storage"] }
 
 [lints]
 workspace = true

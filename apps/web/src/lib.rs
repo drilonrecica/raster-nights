@@ -2,6 +2,8 @@
 
 //! Browser host for Raster Nights.
 
+pub mod storage;
+
 #[cfg(target_arch = "wasm32")]
 mod browser {
     use std::{cell::RefCell, io, rc::Rc, time::Duration};
@@ -10,10 +12,13 @@ mod browser {
         DISPLAY_HEIGHT, DISPLAY_WIDTH, DisplayBuffer, GridPoint, copy_to_ratatui,
     };
     use raster_engine::{
-        Application, CalendarDate, DeviceInput, FixedStepClock, HostKind, InputCapability,
-        InputSystem, KeyCode, KeyModifiers, LiveRegion, PhysicalKey, PointerButton, SemanticId,
-        SemanticNode, SemanticRole, SemanticUiTree,
+        Application, ApplicationRepository, CalendarDate, DeviceInput, FixedStepClock, HostKind,
+        InputCapability, InputSystem, KeyCode, KeyModifiers, LiveRegion, PhysicalKey,
+        PointerButton, RunMetadataSource, RunSeed, SemanticId, SemanticNode, SemanticRole,
+        SemanticUiTree,
     };
+    use raster_games::RasterGameRegistry;
+    use raster_storage::{InMemoryRepository, Repository};
     use ratzilla::{
         CanvasBackend, WebEventHandler, WebGl2Backend, WebRenderer,
         backend::{canvas::CanvasBackendOptions, webgl2::WebGl2BackendOptions},
@@ -25,6 +30,8 @@ mod browser {
     };
     use wasm_bindgen::{JsCast, closure::Closure, prelude::*};
     use web_sys::{Document, Element, Event, KeyboardEvent, Node};
+
+    use crate::storage::BrowserByteStorage;
 
     const DISPLAY_ELEMENT_ID: &str = "drx90-display";
     const SEMANTIC_ELEMENT_ID: &str = "drx90-semantic";
@@ -56,8 +63,28 @@ mod browser {
 
     impl BrowserRuntime {
         fn new(events: Rc<RefCell<Vec<BrowserEvent>>>) -> Self {
+            let (repository, warning): (Box<dyn ApplicationRepository>, Option<String>) =
+                match BrowserByteStorage::new() {
+                    Ok(storage) => (Box::new(Repository::new(storage)), None),
+                    Err(error) => (
+                        Box::new(InMemoryRepository::default()),
+                        Some(format!(
+                            "Browser persistence is unavailable; records are session-only: {error}"
+                        )),
+                    ),
+                };
+            let mut app = Application::with_services(
+                HostKind::Browser,
+                browser_date(),
+                Box::new(RasterGameRegistry::new()),
+                repository,
+                Box::new(BrowserRunMetadata::new()),
+            );
+            if let Some(warning) = warning {
+                app.report_persistence_unavailable(warning);
+            }
             Self {
-                app: Application::new(HostKind::Browser, browser_date(), false),
+                app,
                 input: InputSystem::new(InputCapability::Enhanced),
                 clock: FixedStepClock::new(),
                 display: DisplayBuffer::canonical(),
@@ -109,6 +136,7 @@ mod browser {
                 BrowserEvent::Activity => self.app.handle_activity(),
                 BrowserEvent::Device(DeviceInput::FocusLost) => {
                     self.focus_suspended = true;
+                    self.app.handle_focus_lost();
                     for action in self.input.release_all(self.clock.current_tick()) {
                         self.app.handle_action(action.action, action.phase);
                     }
@@ -132,6 +160,30 @@ mod browser {
                 }
                 BrowserEvent::SemanticActivate(id) => self.app.activate_semantic_node(&id),
             }
+        }
+    }
+
+    #[derive(Debug)]
+    struct BrowserRunMetadata {
+        state: u64,
+    }
+
+    impl BrowserRunMetadata {
+        fn new() -> Self {
+            Self {
+                state: js_sys::Date::now().to_bits(),
+            }
+        }
+    }
+
+    impl RunMetadataSource for BrowserRunMetadata {
+        fn next_seed(&mut self) -> RunSeed {
+            self.state = self.state.wrapping_add(0x9E37_79B9_7F4A_7C15);
+            RunSeed(self.state ^ self.state.rotate_left(23))
+        }
+
+        fn unix_seconds(&self) -> i64 {
+            (js_sys::Date::now() / 1_000.0) as i64
         }
     }
 

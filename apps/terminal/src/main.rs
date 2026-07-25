@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: MPL-2.0
 
+mod native_storage;
 mod session;
 
 use std::{
     io,
+    sync::atomic::{AtomicU64, Ordering},
+    time::SystemTime,
     time::{Duration, Instant},
 };
 
@@ -17,9 +20,11 @@ use raster_display::{
     copy_to_ratatui, render_diagnostic_grid,
 };
 use raster_engine::{
-    Application, CalendarDate, DeviceInput, FixedStepClock, HostKind, InputCapability, InputSystem,
-    KeyCode, KeyModifiers, PhysicalKey,
+    Application, ApplicationRepository, CalendarDate, DeviceInput, FixedStepClock, HostKind,
+    InputCapability, InputSystem, KeyCode, KeyModifiers, PhysicalKey, RunMetadataSource, RunSeed,
 };
+use raster_games::RasterGameRegistry;
+use raster_storage::{InMemoryRepository, Repository};
 use ratatui::{
     Frame, Terminal,
     backend::CrosstermBackend,
@@ -27,6 +32,8 @@ use ratatui::{
 };
 
 use session::TerminalSession;
+
+use native_storage::NativeByteStorage;
 
 fn main() -> Result<()> {
     let command = parse_arguments()?;
@@ -44,7 +51,7 @@ fn main() -> Result<()> {
 }
 
 fn run_application(capability: InputCapability) -> Result<()> {
-    let mut app = Application::new(HostKind::Native, local_date(), false);
+    let mut app = native_application();
     let mut input = InputSystem::new(capability);
     let mut clock = FixedStepClock::new();
     let mut display = DisplayBuffer::canonical();
@@ -89,6 +96,62 @@ fn run_application(capability: InputCapability) -> Result<()> {
 
     drop(terminal);
     Ok(())
+}
+
+fn native_application() -> Application {
+    let (repository, warning): (Box<dyn ApplicationRepository>, Option<String>) =
+        match NativeByteStorage::open() {
+            Ok(storage) => (Box::new(Repository::new(storage)), None),
+            Err(error) => (
+                Box::new(InMemoryRepository::default()),
+                Some(format!(
+                    "Local persistence is unavailable; records are session-only: {error}"
+                )),
+            ),
+        };
+    let mut app = Application::with_services(
+        HostKind::Native,
+        local_date(),
+        Box::new(RasterGameRegistry::new()),
+        repository,
+        Box::new(NativeRunMetadata::new()),
+    );
+    if let Some(warning) = warning {
+        app.report_persistence_unavailable(warning);
+    }
+    app
+}
+
+#[derive(Debug)]
+struct NativeRunMetadata {
+    state: AtomicU64,
+}
+
+impl NativeRunMetadata {
+    fn new() -> Self {
+        let seed = SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_nanos() as u64;
+        Self {
+            state: AtomicU64::new(seed),
+        }
+    }
+}
+
+impl RunMetadataSource for NativeRunMetadata {
+    fn next_seed(&mut self) -> RunSeed {
+        let value = self
+            .state
+            .fetch_add(0x9E37_79B9_7F4A_7C15, Ordering::Relaxed);
+        RunSeed(value ^ value.rotate_left(23))
+    }
+
+    fn unix_seconds(&self) -> i64 {
+        SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0, |duration| duration.as_secs() as i64)
+    }
 }
 
 fn run_display_test(capability: InputCapability) -> Result<()> {
