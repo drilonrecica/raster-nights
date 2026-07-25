@@ -9,8 +9,13 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
+ratatui = { workspace = true, optional = true }
 thiserror.workspace = true
 unicode-width.workspace = true
+
+[features]
+default = []
+ratatui = ["dep:ratatui"]
 
 [lints]
 workspace = true

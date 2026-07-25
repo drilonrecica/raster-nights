@@ -6,6 +6,8 @@ mod buffer;
 mod cell;
 mod diagnostics;
 mod geometry;
+#[cfg(feature = "ratatui")]
+mod ratatui_adapter;
 
 pub use buffer::{Display, DisplayBuffer, DisplaySnapshot, DisplayViewport};
 pub use cell::{
@@ -14,6 +16,8 @@ pub use cell::{
 };
 pub use diagnostics::render_diagnostic_grid;
 pub use geometry::{GridPoint, GridRect, GridSize};
+#[cfg(feature = "ratatui")]
+pub use ratatui_adapter::copy_to_ratatui;
 
 /// Width of the canonical DRX-90 logical display.
 pub const DISPLAY_WIDTH: u16 = 100;

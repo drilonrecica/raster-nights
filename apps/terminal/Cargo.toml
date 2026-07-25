@@ -12,7 +12,7 @@ repository.workspace = true
 anyhow.workspace = true
 crossterm.workspace = true
 ratatui.workspace = true
-raster-display = { path = "../../crates/raster-display" }
+raster-display = { path = "../../crates/raster-display", features = ["ratatui"] }
 raster-engine = { path = "../../crates/raster-engine" }
 raster-games = { path = "../../crates/raster-games" }
 raster-storage = { path = "../../crates/raster-storage" }
