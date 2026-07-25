@@ -46,7 +46,7 @@ pub(crate) fn render(app: &Application, display: &mut dyn Display) -> Result<(),
         AppState::TraceEntry(trace) => render_trace_entry(display, &trace.value)?,
         AppState::Loading(request) => render_loading(
             display,
-            app.selected_descriptor().as_ref(),
+            app.installed_descriptor(&request.game_id).as_ref(),
             &request.game_id,
         )?,
         AppState::Playing(session) => session.game.render(display)?,
@@ -54,7 +54,7 @@ pub(crate) fn render(app: &Application, display: &mut dyn Display) -> Result<(),
             pause.session.game.render(display)?;
             render_pause(display, pause)?;
         }
-        AppState::Controls(_) => render_controls(display)?,
+        AppState::Controls(pause) => render_controls(display, pause)?,
         AppState::Settings(settings) => {
             render_settings(display, settings, &app.settings(), app.host())?
         }
@@ -430,7 +430,7 @@ fn render_pause(display: &mut dyn Display, pause: &PauseState) -> Result<(), Gly
         40,
         7,
         match pause.reason {
-            PauseReason::Player => "TRANSMISSION PAUSED",
+            PauseReason::Player => "PROGRAM PAUSED",
             PauseReason::FocusLost => "FOCUS LOST - PAUSED",
         },
     )?;
@@ -454,24 +454,29 @@ fn render_pause(display: &mut dyn Display, pause: &PauseState) -> Result<(), Gly
     Ok(())
 }
 
-fn render_controls(display: &mut dyn Display) -> Result<(), GlyphError> {
-    frame(display, "SIGNAL STACK / CONTROLS")?;
+fn render_controls(display: &mut dyn Display, pause: &PauseState) -> Result<(), GlyphError> {
+    let descriptor = pause.session.game.descriptor();
+    frame(
+        display,
+        &format!("{} / CONTROLS", descriptor.title.to_uppercase()),
+    )?;
     panel(
         display,
         GridRect::new(16, 5, 68, 25),
         SemanticColor::Primary,
     )?;
-    text(display, 23, 9, "LEFT / RIGHT       MOVE PACKET")?;
-    text(display, 23, 12, "UP OR X            ROTATE CLOCKWISE")?;
-    text(
-        display,
-        23,
-        15,
-        "Z                  ROTATE COUNTERCLOCKWISE",
-    )?;
-    text(display, 23, 18, "DOWN               SOFT DROP")?;
-    text(display, 23, 21, "SPACE              HARD DROP")?;
-    text(display, 23, 24, "C                  HOLD PACKET")?;
+    for (index, control) in descriptor.controls.iter().take(6).enumerate() {
+        text(
+            display,
+            23,
+            9 + index as u16 * 3,
+            &format!(
+                "{:<20} {}",
+                control.default_bindings.join(" / "),
+                control.label.to_uppercase()
+            ),
+        )?;
+    }
     status_line(display, "ESC Return to pause menu")?;
     Ok(())
 }
@@ -548,21 +553,21 @@ fn render_game_over(
     display: &mut dyn Display,
     game_over: &GameOverState,
 ) -> Result<(), GlyphError> {
-    frame(display, "SIGNAL STACK / DIAGNOSTIC")?;
-    warning(display, 35, 6, "SIGNAL CAPACITY EXCEEDED")?;
-    text(
+    let title = game_over.session.game.descriptor().title.to_uppercase();
+    frame(display, &format!("{title} / DIAGNOSTIC"))?;
+    warning(
         display,
-        26,
-        11,
-        "CHANNEL MATRIX ................. SATURATED",
+        35,
+        6,
+        if game_over.result.outcome == crate::GameOutcome::Completed {
+            "RUN COMPLETED"
+        } else {
+            "RUN TERMINATED"
+        },
     )?;
-    text(display, 26, 13, "PACKET INGRESS ................. FAILED")?;
-    text(
-        display,
-        26,
-        15,
-        "TRANSMISSION ................... TERMINATED",
-    )?;
+    text(display, 26, 11, "PROGRAM STATUS ................. CLOSED")?;
+    text(display, 26, 13, "LOCAL RECORD EVALUATION ........ COMPLETE")?;
+    text(display, 26, 15, "AUTHORITATIVE RESULT ........... SEALED")?;
     if game_over
         .result
         .discoveries

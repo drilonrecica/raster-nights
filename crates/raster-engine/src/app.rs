@@ -989,16 +989,22 @@ impl Application {
                     button("trace.return", "Return to software details", false),
                 ],
             ),
-            AppState::Loading(_) => (
-                "Signal Stack loading",
-                vec![status("game.loading", "Loading Standard Transmission")],
+            AppState::Loading(request) => (
+                "Software loading",
+                vec![status(
+                    "game.loading",
+                    &format!("Loading {}", request.game_id),
+                )],
             ),
-            AppState::Playing(_) => (
-                "Signal Stack gameplay",
-                vec![status("game.status", "Transmission active")],
+            AppState::Playing(session) => (
+                "Gameplay",
+                vec![status(
+                    "game.status",
+                    &format!("{} active", session.game.descriptor().title),
+                )],
             ),
             AppState::Paused(pause) => (
-                "Signal Stack paused",
+                "Gameplay paused",
                 PauseMenuItem::ALL
                     .iter()
                     .map(|item| {
@@ -1011,7 +1017,7 @@ impl Application {
                     .collect(),
             ),
             AppState::Controls(_) => (
-                "Signal Stack controls",
+                "Game controls",
                 vec![button("controls.return", "Return to pause menu", true)],
             ),
             AppState::Settings(settings) => (
@@ -1028,7 +1034,7 @@ impl Application {
                     .collect(),
             ),
             AppState::GameOver(game_over) => (
-                "Signal Stack transmission terminated",
+                "Game run ended",
                 vec![
                     status(
                         "game-over.score",
@@ -1807,6 +1813,16 @@ impl Application {
             .or_else(|| descriptors.first().cloned())
     }
 
+    pub(crate) fn installed_descriptor(&self, id: &crate::GameId) -> Option<GameDescriptor> {
+        let runtime = self.runtime.as_ref()?;
+        runtime
+            .registry
+            .advertised_descriptors()
+            .into_iter()
+            .chain(runtime.registry.hidden_descriptors())
+            .find(|descriptor| descriptor.id == *id)
+    }
+
     pub(crate) fn advertised_descriptors(&self) -> Vec<GameDescriptor> {
         self.runtime.as_ref().map_or_else(Vec::new, |runtime| {
             runtime.registry.advertised_descriptors()
@@ -2412,7 +2428,7 @@ mod tests {
         let snapshot = display.snapshot();
         assert_eq!(
             snapshot_hash(&snapshot),
-            11_365_372_762_637_202_352,
+            10_641_624_329_546_993_430,
             "\n{}",
             snapshot.character_grid()
         );
@@ -2420,7 +2436,7 @@ mod tests {
             display
                 .snapshot()
                 .character_grid()
-                .contains("TRANSMISSION PAUSED")
+                .contains("PROGRAM PAUSED")
         );
         press(&mut app, AppAction::Confirm);
         assert_eq!(app.state_kind(), AppStateKind::Playing);
@@ -2440,7 +2456,7 @@ mod tests {
         let snapshot = display.snapshot();
         assert_eq!(
             snapshot_hash(&snapshot),
-            12_537_496_149_893_182_665,
+            9_245_982_703_293_463_071,
             "\n{}",
             snapshot.character_grid()
         );
@@ -2448,7 +2464,7 @@ mod tests {
             display
                 .snapshot()
                 .character_grid()
-                .contains("SIGNAL CAPACITY EXCEEDED")
+                .contains("RUN TERMINATED")
         );
         press(&mut app, AppAction::Confirm);
         assert_eq!(app.state_kind(), AppStateKind::TagEntry);
