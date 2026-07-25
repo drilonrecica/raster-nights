@@ -184,7 +184,10 @@ impl ThreeCharacterTag {
         if bytes.len() != 3 {
             return Err(IdentifierError::InvalidTagLength);
         }
-        if !bytes.iter().all(u8::is_ascii_alphanumeric) {
+        if !bytes
+            .iter()
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'.' | b'_'))
+        {
             return Err(IdentifierError::InvalidTagCharacter);
         }
         Ok(Self([
@@ -239,7 +242,7 @@ pub enum IdentifierError {
     ZeroRulesRevision,
     #[error("score tag must contain exactly three ASCII characters")]
     InvalidTagLength,
-    #[error("score tag accepts only ASCII letters and digits")]
+    #[error("score tag accepts only ASCII letters, digits, hyphens, periods, and underscores")]
     InvalidTagCharacter,
 }
 
@@ -290,9 +293,21 @@ mod tests {
     }
 
     #[test]
+    fn tag_accepts_the_documented_restrained_punctuation() {
+        for value in ["A-1", "B.2", "C_3"] {
+            assert_eq!(
+                ThreeCharacterTag::parse(value)
+                    .expect("documented punctuation is valid")
+                    .as_str(),
+                value
+            );
+        }
+    }
+
+    #[test]
     fn tag_rejects_non_ascii_or_wrong_length() {
         assert!(ThreeCharacterTag::parse("AB").is_err());
-        assert!(ThreeCharacterTag::parse("A_B").is_err());
+        assert!(ThreeCharacterTag::parse("A/B").is_err());
         assert!(ThreeCharacterTag::parse("ÅBC").is_err());
     }
 

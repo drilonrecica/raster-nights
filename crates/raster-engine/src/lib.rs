@@ -7,6 +7,7 @@ mod clock;
 mod domain;
 mod input;
 mod input_system;
+mod persistence;
 mod screens;
 mod semantic;
 
@@ -21,6 +22,10 @@ pub use input::{
     PhysicalKey, PointerButton, TextEscapeBehavior,
 };
 pub use input_system::{ActionEvent, ActionPhase, InputSystem, RepeatProfile, map_key_to_action};
+pub use persistence::{
+    AssistanceProfileId, DisplayPalette, EffectsProfile, PersistenceError, ScoreRecord,
+    ScoreRepository, Settings, SettingsRepository, SystemState, SystemStateRepository,
+};
 pub use semantic::{
     GridDirection, LiveRegion, SemanticActionKind, SemanticCommand, SemanticEvent, SemanticId,
     SemanticNode, SemanticRole, SemanticState, SemanticUiTree,
