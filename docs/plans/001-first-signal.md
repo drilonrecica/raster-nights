@@ -16,12 +16,11 @@ Related documents:
 - `docs/DEVELOPMENT.md`
 - `docs/DECISIONS.md`
 
-Implementation checkpoint (25.07.2026): repository foundation, shared domain
-types, canonical display, deterministic clock, normalized input, diagnostic
-native/web hosts, website shell, and CI validation are complete. The next
-vertical slice delivered the shared privacy, boot, launcher, software-details,
-system-menu, resize, interrupt, fatal-error, and shutdown flow in both hosts.
-Signal Stack gameplay and persistence remain in progress.
+Implementation checkpoint (25.07.2026): the complete First Signal product loop
+is implemented in shared code and composed in both hosts. Signal Stack rules,
+rendering, lifecycle, versioned persistence, native atomic files, browser local
+storage, score entry, semantic screens, and native/Wasm deterministic golden
+runs are complete. Manual platform QA and final acceptance review remain.
 
 ---
 
@@ -366,7 +365,7 @@ Add explicit newtypes/enums for:
 - [x] `InputCapability`
 - [x] host-independent `SemanticUiTree`, `SemanticNode`, stable IDs, roles,
       states, and actions defined by `docs/ARCHITECTURE.md`
-- [ ] storage repository ports used by the application
+- [x] storage repository ports used by the application
 
 ### Requirements
 
@@ -460,12 +459,12 @@ Implement:
 - [x] `WarmBoot`
 - [x] `Launcher`
 - [x] `SoftwareDetails`
-- [ ] `Loading`
-- [ ] `Playing`
-- [ ] `Paused`
-- [ ] `GameOver`
-- [ ] `TagEntry`
-- [ ] `Scores`
+- [x] `Loading`
+- [x] `Playing`
+- [x] `Paused`
+- [x] `GameOver`
+- [x] `TagEntry`
+- [x] `Scores`
 - [x] semantic tree for each implemented non-game state
 - [x] `ResizeSuspended`
 - [x] `Shutdown`
@@ -484,7 +483,7 @@ Implement:
 ### Privacy notice
 
 - [x] First-run state.
-- [ ] Local acknowledgement.
+- [x] Local acknowledgement.
 - [x] Clear no-network wording.
 
 ### Cold boot
@@ -498,7 +497,7 @@ Implement:
 ### Warm boot
 
 - [x] abbreviated checks.
-- [ ] restore last selected item.
+- [x] restore last selected item.
 - [x] skip on input.
 
 ### Launcher
@@ -523,48 +522,48 @@ Implement:
 
 ### Matrix
 
-- [ ] 10×20 visible cells.
-- [ ] 4 hidden rows.
-- [ ] collision queries.
-- [ ] lock operation.
-- [ ] channel clearing.
-- [ ] spawn failure.
+- [x] 10×20 visible cells.
+- [x] 4 hidden rows.
+- [x] collision queries.
+- [x] lock operation.
+- [x] channel clearing.
+- [x] spawn failure.
 
 ### Packets
 
-- [ ] seven packet geometries.
-- [ ] four rotations where applicable.
-- [ ] exact revision-1 spawn and rotation tables.
-- [ ] deterministic shuffled bag.
-- [ ] five preview queue.
-- [ ] hold state.
-- [ ] spawn positions.
-- [ ] wall-kick table.
+- [x] seven packet geometries.
+- [x] four rotations where applicable.
+- [x] exact revision-1 spawn and rotation tables.
+- [x] deterministic shuffled bag.
+- [x] five preview queue.
+- [x] hold state.
+- [x] spawn positions.
+- [x] wall-kick table.
 
 ### Timing
 
-- [ ] gravity by transmission rate.
-- [ ] soft drop.
-- [ ] hard drop.
-- [ ] lock delay.
-- [ ] limited lock refresh.
-- [ ] rate advance every 10 channels.
+- [x] gravity by transmission rate.
+- [x] soft drop.
+- [x] hard drop.
+- [x] lock delay.
+- [x] limited lock refresh.
+- [x] rate advance every 10 channels.
 
 ### Scoring
 
-- [ ] drop points.
-- [ ] channel clears.
-- [ ] signal chains.
-- [ ] sustained transmissions.
-- [ ] phase rotations.
-- [ ] zero-state matrix.
-- [ ] score overflow policy.
+- [x] drop points.
+- [x] channel clears.
+- [x] signal chains.
+- [x] sustained transmissions.
+- [x] phase rotations.
+- [x] zero-state matrix.
+- [x] score overflow policy.
 
 ### Status
 
-- [ ] Running
-- [ ] Paused by app
-- [ ] Saturated/GameOver
+- [x] Running
+- [x] Paused by app
+- [x] Saturated/GameOver
 
 ### Acceptance
 
@@ -730,17 +729,17 @@ primitive.
 
 Design a 100×36 layout with:
 
-- [ ] title/status strip.
-- [ ] central matrix.
-- [ ] held packet.
-- [ ] five previews.
-- [ ] score.
-- [ ] transmission rate.
-- [ ] cleared channels.
-- [ ] diagnostic status.
-- [ ] danger state.
-- [ ] pause overlay.
-- [ ] game-over diagnostic.
+- [x] title/status strip.
+- [x] central matrix.
+- [x] held packet.
+- [x] five previews.
+- [x] score.
+- [x] transmission rate.
+- [x] cleared channels.
+- [x] diagnostic status.
+- [x] danger state.
+- [x] pause overlay.
+- [x] game-over diagnostic.
 
 ### Requirements
 
@@ -751,27 +750,27 @@ Design a 100×36 layout with:
 
 ### Snapshots
 
-- [ ] empty board
-- [ ] mid-game
-- [ ] near saturation
-- [ ] multi-clear
-- [ ] paused
-- [ ] game over
-- [ ] tag entry
+- [x] empty board
+- [x] mid-game
+- [x] near saturation
+- [x] multi-clear
+- [x] paused
+- [x] game over
+- [x] tag entry
 
 ---
 
 ## Workstream J — Game session and results
 
-- [ ] Create new run request with seed.
-- [ ] Route normalized actions.
-- [ ] Freeze on pause.
-- [ ] Produce result envelope.
-- [ ] Determine qualifying local score.
-- [ ] Enter tag.
-- [ ] Persist score.
-- [ ] Return to launcher.
-- [ ] Handle restart.
+- [x] Create new run request with seed.
+- [x] Route normalized actions.
+- [x] Freeze on pause.
+- [x] Produce result envelope.
+- [x] Determine qualifying local score.
+- [x] Enter tag.
+- [x] Persist score.
+- [x] Return to launcher.
+- [x] Handle restart.
 
 ### Acceptance
 
@@ -787,35 +786,35 @@ Design a 100×36 layout with:
 
 ### Schemas
 
-- [ ] Settings v1
-- [ ] Scores v1
-- [ ] System State v1
+- [x] Settings v1
+- [x] Scores v1
+- [x] System State v1
 
 ### Native
 
-- [ ] per-user directory.
-- [ ] temporary write.
-- [ ] rename.
-- [ ] corrupt-file preservation.
-- [ ] data-directory override for development.
-- [ ] in-memory fallback with visible persistence warning.
+- [x] per-user directory.
+- [x] temporary write.
+- [x] rename.
+- [x] corrupt-file preservation.
+- [x] data-directory override for development.
+- [x] in-memory fallback with visible persistence warning.
 
 ### Browser
 
-- [ ] local adapter.
-- [ ] quota/serialization error.
-- [ ] schema version.
-- [ ] reset.
-- [ ] in-memory fallback with visible persistence warning.
+- [x] local adapter.
+- [x] quota/serialization error.
+- [x] schema version.
+- [x] reset.
+- [x] in-memory fallback with visible persistence warning.
 
 ### Tests
 
-- [ ] round trip.
-- [ ] missing file.
-- [ ] corrupt file.
-- [ ] incompatible version.
-- [ ] isolated score corruption.
-- [ ] atomic-write behavior where testable.
+- [x] round trip.
+- [x] missing file.
+- [x] corrupt file.
+- [x] incompatible version.
+- [x] isolated score corruption.
+- [x] atomic-write behavior where testable.
 
 ---
 
@@ -867,11 +866,11 @@ Shell is usable immediately after every tested exit path.
 - [x] mouse coordinates to grid.
 - [x] focus loss pause.
 - [x] hidden-tab pause.
-- [ ] explicit resume.
-- [ ] storage.
+- [x] explicit resume.
+- [x] storage.
 - [x] display scaling.
 - [x] unsupported message.
-- [ ] semantic mirror for privacy, launcher, details, pause, game over, and tag entry.
+- [x] semantic mirror for privacy, launcher, details, pause, game over, and tag entry.
 
 ### Acceptance
 
@@ -910,12 +909,12 @@ The site remains useful when the Wasm application fails to load.
 - [x] input.
 - [x] clock.
 - [x] display.
-- [ ] Signal Stack.
-- [ ] storage.
-- [ ] golden run native.
-- [ ] golden run Wasm.
+- [x] Signal Stack.
+- [x] storage.
+- [x] golden run native.
+- [x] golden run Wasm.
 - [x] enhanced and compatibility input.
-- [ ] semantic tree and browser mirror.
+- [x] semantic tree and browser mirror.
 - [x] snapshots.
 
 ### CI
@@ -1064,45 +1063,45 @@ No optimization work without a measured issue.
 
 ### Product loop
 
-- [ ] Privacy notice appears once and can be reopened later.
-- [ ] Cold boot and warm boot work.
-- [ ] Input skips boot without accidental double action.
-- [ ] Launcher selects Signal Stack.
-- [ ] Detail screen starts the game.
-- [ ] Standard Transmission is playable.
-- [ ] Pause/resume works.
-- [ ] Game over produces a result.
-- [ ] Qualifying score opens tag entry.
-- [ ] Score persists.
-- [ ] User returns to launcher.
-- [ ] Shutdown restores terminal.
+- [x] Privacy notice appears once and can be reopened later.
+- [x] Cold boot and warm boot work.
+- [x] Input skips boot without accidental double action.
+- [x] Launcher selects Signal Stack.
+- [x] Detail screen starts the game.
+- [x] Standard Transmission is playable.
+- [x] Pause/resume works.
+- [x] Game over produces a result.
+- [x] Qualifying score opens tag entry.
+- [x] Score persists.
+- [x] User returns to launcher.
+- [x] Shutdown restores terminal.
 
 ### Parity
 
-- [ ] Native and browser use same game model.
-- [ ] Same seed/actions produce same authoritative hash.
-- [ ] Score matches across hosts.
-- [ ] Rendering uses same canonical cell composition.
+- [x] Native and browser use same game model.
+- [x] Same seed/actions produce same authoritative hash.
+- [x] Score matches across hosts.
+- [x] Rendering uses same canonical cell composition.
 
 ### Safety
 
-- [ ] Native makes no outbound requests.
-- [ ] Browser makes no requests beyond bundled same-origin application assets.
-- [ ] No analytics.
-- [ ] Terminal cleanup works.
-- [ ] Resize freezes state.
-- [ ] Resize recovery requires explicit resume.
-- [ ] Browser focus loss freezes state.
-- [ ] Corrupt score file does not erase settings.
+- [x] Native makes no outbound requests.
+- [x] Browser makes no requests beyond bundled same-origin application assets.
+- [x] No analytics.
+- [x] Terminal cleanup works.
+- [x] Resize freezes state.
+- [x] Resize recovery requires explicit resume.
+- [x] Browser focus loss freezes state.
+- [x] Corrupt score file does not erase settings.
 
 ### Quality
 
-- [ ] No placeholder public screens.
-- [ ] Text fits 100×36.
+- [x] No placeholder public screens.
+- [x] Text fits 100×36.
 - [ ] High Contrast is readable.
-- [ ] Critical states do not rely only on color.
-- [ ] Checks pass.
-- [ ] Documentation matches implementation.
+- [x] Critical states do not rely only on color.
+- [x] Checks pass.
+- [x] Documentation matches implementation.
 
 ---
 
