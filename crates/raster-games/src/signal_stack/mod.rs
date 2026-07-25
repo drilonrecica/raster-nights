@@ -2,7 +2,10 @@
 
 //! Deterministic revision-1 rules for Signal Stack Standard Transmission.
 
+mod render;
 mod tables;
+
+pub use render::render;
 
 use rand_chacha::ChaCha8Rng;
 use rand_core::{Rng, SeedableRng};

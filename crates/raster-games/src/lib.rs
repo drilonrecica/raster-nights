@@ -2,7 +2,10 @@
 
 //! Official game implementations and their explicit registry.
 
+mod registry;
 pub mod signal_stack;
+
+pub use registry::RasterGameRegistry;
 
 #[cfg(all(test, target_arch = "wasm32"))]
 mod wasm_tests {
