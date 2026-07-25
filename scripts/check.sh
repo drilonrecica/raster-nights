@@ -17,6 +17,7 @@ cargo fmt --all --check
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
 cargo build --workspace
+cargo run --quiet --package raster-nights -- validate-content
 wasm-pack build apps/web \
     --target web \
     --no-pack \

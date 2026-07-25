@@ -62,7 +62,7 @@ mod browser {
     }
 
     impl BrowserRuntime {
-        fn new(events: Rc<RefCell<Vec<BrowserEvent>>>) -> Self {
+        fn new(events: Rc<RefCell<Vec<BrowserEvent>>>) -> Result<Self, JsValue> {
             let (repository, warning): (Box<dyn ApplicationRepository>, Option<String>) =
                 match BrowserByteStorage::new() {
                     Ok(storage) => (Box::new(Repository::new(storage)), None),
@@ -73,17 +73,18 @@ mod browser {
                         )),
                     ),
                 };
+            let registry = RasterGameRegistry::load().map_err(js_error)?;
             let mut app = Application::with_services(
                 HostKind::Browser,
                 browser_date(),
-                Box::new(RasterGameRegistry::new()),
+                Box::new(registry),
                 repository,
                 Box::new(BrowserRunMetadata::new()),
             );
             if let Some(warning) = warning {
                 app.report_persistence_unavailable(warning);
             }
-            Self {
+            Ok(Self {
                 app,
                 input: InputSystem::new(InputCapability::Enhanced),
                 clock: FixedStepClock::new(),
@@ -92,7 +93,7 @@ mod browser {
                 previous_frame_ms: js_sys::Date::now(),
                 focus_suspended: false,
                 rendered_semantic_revision: None,
-            }
+            })
         }
 
         fn update(&mut self) {
@@ -207,7 +208,7 @@ mod browser {
         });
         register_browser_events(Rc::clone(&events))?;
 
-        let runtime = Rc::new(RefCell::new(BrowserRuntime::new(events)));
+        let runtime = Rc::new(RefCell::new(BrowserRuntime::new(events)?));
         let webgl_options = WebGl2BackendOptions::new()
             .grid_id(DISPLAY_ELEMENT_ID)
             .size(WEBGL_PIXEL_SIZE)

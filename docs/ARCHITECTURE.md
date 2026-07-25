@@ -416,19 +416,23 @@ Conceptual metadata:
 ```rust
 pub struct GameDescriptor {
     pub id: GameId,
-    pub title: &'static str,
-    pub short_title: &'static str,
+    pub title: String,
+    pub short_title: String,
     pub category: GameCategory,
-    pub fictional_release_date: FictionalDate,
-    pub fictional_version: &'static str,
-    pub rules_revision: u16,
+    pub fictional_release_date: Option<String>,
+    pub fictional_version: String,
+    pub catalog_number: Option<String>,
+    pub rules_revision: RulesRevision,
+    pub visibility: CatalogVisibility,
     pub minimum_grid: GridSize,
-    pub supported_modes: &'static [ModeDescriptor],
-    pub controls: &'static [ControlDescription],
+    pub modes: Vec<ModeDescriptor>,
+    pub controls: Vec<ControlDescription>,
 }
 ```
 
-Metadata must be sufficient for launcher, details, manuals, and result records.
+Metadata is loaded from versioned bundled JSON and validated against the
+explicit compiled registrations before either host starts. It must be
+sufficient for launcher, details, manuals, and result records.
 
 ### 7.2 Registry
 
@@ -447,6 +451,7 @@ pub static GAMES: &[GameRegistration] = &[
 ```
 
 Hidden software is registered separately and omitted from ordinary catalog queries.
+The registry exposes advertised and hidden descriptor queries separately.
 
 No linker tricks, runtime discovery, plugin manifests, or build-script scanning.
 `raster-engine` operates on the injected registration slice and never imports

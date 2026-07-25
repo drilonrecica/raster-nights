@@ -19,7 +19,8 @@ pub use domain::{
     SimulationStep, SimulationTick, StateHash, ThreeCharacterTag,
 };
 pub use game::{
-    Game, GameDescriptor, GameError, GameRegistry, ModeDescriptor, NewRunRequest, RunMetadataSource,
+    CatalogVisibility, ControlDescription, DirectLaunchRequest, Game, GameCategory, GameDescriptor,
+    GameError, GameRegistry, ModeDescriptor, NewRunRequest, RunMetadataSource, StartupOptions,
 };
 pub use input::{
     AppAction, DeviceInput, GameAction, InputCapability, InputContext, KeyCode, KeyModifiers,

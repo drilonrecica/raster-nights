@@ -1,0 +1,62 @@
+{
+  "format_version": 1,
+  "games": [
+    {
+      "id": "signal-stack",
+      "title": "Signal Stack",
+      "short_title": "Signal Stack",
+      "category": "puzzle",
+      "fictional_release_date": "21.11.1995",
+      "fictional_version": "1.4",
+      "catalog_number": "SCW-AH-195",
+      "fictional_developer": "Frankenberg Logic Bureau",
+      "fictional_publisher": "Sara Circuitworks",
+      "premise": "Align signal packets and clear channels before the transmission matrix saturates.",
+      "visibility": "advertised",
+      "rules_revision": 1,
+      "modes": [
+        {
+          "id": "standard-transmission",
+          "title": "Standard Transmission"
+        }
+      ],
+      "controls": [
+        {
+          "action": "move-left",
+          "label": "Move left",
+          "default_bindings": ["LEFT", "H"]
+        },
+        {
+          "action": "move-right",
+          "label": "Move right",
+          "default_bindings": ["RIGHT", "L"]
+        },
+        {
+          "action": "soft-drop",
+          "label": "Soft drop",
+          "default_bindings": ["DOWN", "J"]
+        },
+        {
+          "action": "hard-drop",
+          "label": "Hard drop",
+          "default_bindings": ["SPACE"]
+        },
+        {
+          "action": "rotate-clockwise",
+          "label": "Rotate clockwise",
+          "default_bindings": ["UP", "X", "K"]
+        },
+        {
+          "action": "rotate-counterclockwise",
+          "label": "Rotate counterclockwise",
+          "default_bindings": ["Z"]
+        },
+        {
+          "action": "hold",
+          "label": "Hold packet",
+          "default_bindings": ["C"]
+        }
+      ]
+    }
+  ]
+}

@@ -1,5 +1,5 @@
 [package]
-name = "raster-terminal"
+name = "raster-nights"
 description = "Native terminal host for Raster Nights"
 version.workspace = true
 edition.workspace = true

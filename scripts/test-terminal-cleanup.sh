@@ -4,7 +4,7 @@
 set -euo pipefail
 
 project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-binary="$project_root/target/debug/raster-terminal"
+binary="$project_root/target/debug/raster-nights"
 
 for required_command in cargo tmux stty; do
     if ! command -v "$required_command" >/dev/null 2>&1; then
@@ -13,7 +13,7 @@ for required_command in cargo tmux stty; do
     fi
 done
 
-cargo build --manifest-path "$project_root/Cargo.toml" --package raster-terminal
+cargo build --manifest-path "$project_root/Cargo.toml" --package raster-nights
 
 qa_directory="$(mktemp -d)"
 session_name="raster-nights-cleanup-$$"

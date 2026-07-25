@@ -157,18 +157,21 @@ Rust-to-browser packaging path and keep the script authoritative.
 ### Native application
 
 ```bash
-cargo run -p raster-terminal
+cargo run -p raster-nights
 ```
 
 Examples:
 
 ```bash
-cargo run -p raster-terminal -- display-test
+cargo run -p raster-nights -- display-test
+cargo run -p raster-nights -- diagnostics
+cargo run -p raster-nights -- validate-content
+cargo run -p raster-nights -- play signal-stack --quick --seed 42
 ```
 
-The current CLI accepts the normal launcher and `display-test`. Direct game
-launch, quiet mode, and authored-content validation are planned 0.1 interfaces,
-not implemented commands.
+`play loopback` is parsed but reports that the game is not installed until its
+0.1 vertical slice is present. Packet Sweep cannot be requested through the
+public direct-launch parser.
 
 ### Web application and website
 
@@ -220,11 +223,17 @@ cargo bench -p raster-games
 ### Standard native run
 
 ```bash
-cargo run -p raster-terminal
+cargo run -p raster-nights
 ```
 
-Quiet mode, direct deterministic seeds, and debug overlays are planned 0.1
-development interfaces. They are not accepted by the current CLI.
+Quiet mode and deterministic direct seeds are available:
+
+```bash
+cargo run -p raster-nights -- --quiet
+cargo run -p raster-nights -- play signal-stack --quick --seed 42
+```
+
+Debug overlays remain deferred.
 
 ### Temporary isolated data
 
@@ -232,7 +241,7 @@ Development should support a temporary data directory:
 
 ```bash
 RASTER_NIGHTS_DATA_DIR=/tmp/raster-nights-dev \
-  cargo run -p raster-terminal
+  cargo run -p raster-nights
 ```
 
 This avoids corrupting real local scores during tests.
@@ -368,7 +377,7 @@ Keep in Rust:
 
 ### Validation command
 
-The planned 0.1 content pipeline should provide:
+The 0.1 content pipeline provides:
 
 ```bash
 raster-nights validate-content

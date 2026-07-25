@@ -5,7 +5,7 @@
 mod registry;
 pub mod signal_stack;
 
-pub use registry::RasterGameRegistry;
+pub use registry::{CatalogError, RasterGameRegistry};
 
 #[cfg(all(test, target_arch = "wasm32"))]
 mod wasm_tests {

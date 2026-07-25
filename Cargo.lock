@@ -766,7 +766,24 @@ dependencies = [
  "rand_core",
  "raster-display",
  "raster-engine",
+ "serde",
+ "serde_json",
+ "thiserror",
  "wasm-bindgen-test",
+]
+
+[[package]]
+name = "raster-nights"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "crossterm",
+ "raster-display",
+ "raster-engine",
+ "raster-games",
+ "raster-storage",
+ "ratatui",
+ "time",
 ]
 
 [[package]]
@@ -778,20 +795,6 @@ dependencies = [
  "serde_json",
  "thiserror",
  "toml",
-]
-
-[[package]]
-name = "raster-terminal"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "crossterm",
- "raster-display",
- "raster-engine",
- "raster-games",
- "raster-storage",
- "ratatui",
- "time",
 ]
 
 [[package]]

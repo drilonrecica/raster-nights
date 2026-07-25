@@ -16,7 +16,7 @@ use thiserror::Error;
 
 pub const SETTINGS_FORMAT_VERSION: u16 = 1;
 pub const SCORES_FORMAT_VERSION: u16 = 1;
-pub const SYSTEM_STATE_FORMAT_VERSION: u16 = 1;
+pub const SYSTEM_STATE_FORMAT_VERSION: u16 = 2;
 
 const SETTINGS_DOMAIN: &str = "settings";
 const SCORES_DOMAIN: &str = "scores";
@@ -311,17 +311,57 @@ impl<B: ByteStorage> SystemStateRepository for Repository<B> {
         let Some(data) = self.read(StorageKey::SystemState, SYSTEM_STATE_DOMAIN)? else {
             return Ok(SystemState::default());
         };
-        let file: SystemStateFileV1 = self.decode_json(
-            StorageKey::SystemState,
-            SYSTEM_STATE_DOMAIN,
-            SYSTEM_STATE_FORMAT_VERSION,
-            &data,
-        )?;
-        Ok(file.state)
+        let version = match serde_json::from_slice::<VersionProbe>(&data) {
+            Ok(probe) => probe.format_version,
+            Err(error) => {
+                return Err(self.corrupt(
+                    StorageKey::SystemState,
+                    SYSTEM_STATE_DOMAIN,
+                    &data,
+                    error.to_string(),
+                ));
+            }
+        };
+        match version {
+            1 => {
+                let old: SystemStateFileV1 = serde_json::from_slice(&data).map_err(|error| {
+                    self.corrupt(
+                        StorageKey::SystemState,
+                        SYSTEM_STATE_DOMAIN,
+                        &data,
+                        error.to_string(),
+                    )
+                })?;
+                let migrated = SystemState {
+                    privacy_acknowledged: old.privacy_acknowledged,
+                    last_selected_game: old.last_selected_game,
+                    last_game_mode: old.last_game_mode,
+                    last_score_tag: old.last_score_tag,
+                    packet_sweep_trace_revealed: false,
+                    packet_sweep_unlocked: false,
+                };
+                self.save_system_state(&migrated)?;
+                Ok(migrated)
+            }
+            SYSTEM_STATE_FORMAT_VERSION => {
+                let file: SystemStateFileV2 = self.decode_json(
+                    StorageKey::SystemState,
+                    SYSTEM_STATE_DOMAIN,
+                    SYSTEM_STATE_FORMAT_VERSION,
+                    &data,
+                )?;
+                Ok(file.state)
+            }
+            found => Err(PersistenceError::IncompatibleVersion {
+                domain: SYSTEM_STATE_DOMAIN,
+                found,
+                supported: SYSTEM_STATE_FORMAT_VERSION,
+            }),
+        }
     }
 
     fn save_system_state(&mut self, state: &SystemState) -> Result<(), PersistenceError> {
-        let file = SystemStateFileV1 {
+        let file = SystemStateFileV2 {
             format_version: SYSTEM_STATE_FORMAT_VERSION,
             state: state.clone(),
         };
@@ -355,6 +395,15 @@ struct ScoresFileV1 {
 
 #[derive(Deserialize, Serialize)]
 struct SystemStateFileV1 {
+    format_version: u16,
+    privacy_acknowledged: bool,
+    last_selected_game: Option<raster_engine::GameId>,
+    last_game_mode: Option<raster_engine::ModeId>,
+    last_score_tag: Option<raster_engine::ThreeCharacterTag>,
+}
+
+#[derive(Deserialize, Serialize)]
+struct SystemStateFileV2 {
     format_version: u16,
     #[serde(flatten)]
     state: SystemState,
@@ -414,6 +463,8 @@ mod tests {
             last_selected_game: Some(GameId::parse("signal-stack").expect("valid fixture")),
             last_game_mode: Some(ModeId::parse("standard-transmission").expect("valid fixture")),
             last_score_tag: Some(ThreeCharacterTag::parse("NUL").expect("valid fixture")),
+            packet_sweep_trace_revealed: true,
+            packet_sweep_unlocked: false,
         };
 
         repository.save_settings(&settings).expect("settings save");
@@ -461,6 +512,50 @@ mod tests {
         assert_eq!(
             repository.load_system_state().expect("default state"),
             SystemState::default()
+        );
+    }
+
+    #[test]
+    fn system_state_v1_migrates_to_v2_without_losing_values() {
+        let mut storage = MemoryByteStorage::default();
+        storage.insert_raw(
+            StorageKey::SystemState,
+            br#"{
+                "format_version": 1,
+                "privacy_acknowledged": true,
+                "last_selected_game": "signal-stack",
+                "last_game_mode": "standard-transmission",
+                "last_score_tag": "NUL"
+            }"#
+            .to_vec(),
+        );
+        let mut repository = Repository::new(storage);
+
+        let state = repository.load_system_state().expect("v1 migrates");
+
+        assert!(state.privacy_acknowledged);
+        assert_eq!(
+            state
+                .last_selected_game
+                .as_ref()
+                .map(raster_engine::GameId::as_str),
+            Some("signal-stack")
+        );
+        assert_eq!(
+            state.last_score_tag.map(|tag| tag.to_string()),
+            Some("NUL".to_owned())
+        );
+        assert!(!state.packet_sweep_trace_revealed);
+        assert!(!state.packet_sweep_unlocked);
+        assert!(
+            std::str::from_utf8(
+                repository
+                    .storage()
+                    .raw(StorageKey::SystemState)
+                    .expect("migrated bytes")
+            )
+            .expect("UTF-8")
+            .contains("\"format_version\": 2")
         );
     }
 

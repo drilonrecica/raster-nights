@@ -4,8 +4,8 @@ use crate::{
     ActionPhase, AppAction, ApplicationRepository, AssistanceProfileId, Game, GameRegistry,
     GameResult, GameStatus, InputContext, LiveRegion, NewRunRequest, RunMetadataSource,
     ScoreRecord, SemanticActionKind, SemanticId, SemanticNode, SemanticRole, SemanticState,
-    SemanticUiTree, Settings, SimulationStep, SystemState, TextEscapeBehavior, ThreeCharacterTag,
-    insert_score, normalize_scores, ranked_scores, score_qualifies,
+    SemanticUiTree, Settings, SimulationStep, StartupOptions, SystemState, TextEscapeBehavior,
+    ThreeCharacterTag, insert_score, normalize_scores, ranked_scores, score_qualifies,
 };
 use raster_display::{Display, GlyphError};
 
@@ -165,6 +165,9 @@ struct RuntimeServices {
     system_state: SystemState,
     scores: Vec<ScoreRecord>,
     warning: Option<String>,
+    startup_options: StartupOptions,
+    pending_direct: Option<NewRunRequest>,
+    startup_error: Option<String>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -243,8 +246,27 @@ impl Application {
         host: HostKind,
         date: CalendarDate,
         registry: Box<dyn GameRegistry>,
-        mut repository: Box<dyn ApplicationRepository>,
+        repository: Box<dyn ApplicationRepository>,
         metadata: Box<dyn RunMetadataSource>,
+    ) -> Self {
+        Self::with_services_and_options(
+            host,
+            date,
+            registry,
+            repository,
+            metadata,
+            StartupOptions::default(),
+        )
+    }
+
+    #[must_use]
+    pub fn with_services_and_options(
+        host: HostKind,
+        date: CalendarDate,
+        registry: Box<dyn GameRegistry>,
+        mut repository: Box<dyn ApplicationRepository>,
+        mut metadata: Box<dyn RunMetadataSource>,
+        startup_options: StartupOptions,
     ) -> Self {
         let (settings, settings_warning) =
             load_or_default(repository.load_settings(), Settings::default(), "settings");
@@ -272,10 +294,35 @@ impl Application {
         .into_iter()
         .flatten()
         .next();
-        let state = if system_state.privacy_acknowledged {
-            AppState::WarmBoot(BootState { elapsed_ticks: 0 })
-        } else {
+        let direct = build_direct_request(
+            &startup_options,
+            registry.as_ref(),
+            &system_state,
+            metadata.as_mut(),
+        );
+        let (pending_direct, startup_error) = match direct {
+            Ok(request) => (request, None),
+            Err(error) => (None, Some(error)),
+        };
+        let state = if !system_state.privacy_acknowledged {
             AppState::PrivacyNotice
+        } else if let Some(error) = &startup_error {
+            AppState::FatalError(error.clone())
+        } else if pending_direct.is_some()
+            && startup_options
+                .direct_launch
+                .as_ref()
+                .is_some_and(|request| request.quick)
+        {
+            AppState::Loading(
+                pending_direct
+                    .clone()
+                    .expect("direct request checked before startup state"),
+            )
+        } else if pending_direct.is_some() {
+            AppState::SoftwareDetails
+        } else {
+            AppState::WarmBoot(BootState { elapsed_ticks: 0 })
         };
         Self {
             state,
@@ -291,6 +338,9 @@ impl Application {
                 system_state,
                 scores,
                 warning,
+                startup_options,
+                pending_direct,
+                startup_error,
             }),
         }
     }
@@ -431,7 +481,8 @@ impl Application {
         match &mut self.state {
             AppState::PrivacyNotice if action == AppAction::Confirm => {
                 self.acknowledge_privacy();
-                self.transition(AppState::ColdBoot(BootState { elapsed_ticks: 0 }));
+                let next = self.post_privacy_state();
+                self.transition(next);
             }
             AppState::PrivacyReview if matches!(action, AppAction::Confirm | AppAction::Back) => {
                 self.transition(AppState::Launcher);
@@ -669,16 +720,18 @@ impl Application {
             return;
         }
 
+        let cold_boot_limit = self.boot_tick_limit(false);
+        let warm_boot_limit = self.boot_tick_limit(true);
         match &mut self.state {
             AppState::ColdBoot(boot) => {
                 boot.elapsed_ticks = boot.elapsed_ticks.saturating_add(1);
-                if boot.elapsed_ticks >= COLD_BOOT_TICKS {
+                if boot.elapsed_ticks >= cold_boot_limit {
                     self.transition(AppState::Launcher);
                 }
             }
             AppState::WarmBoot(boot) => {
                 boot.elapsed_ticks = boot.elapsed_ticks.saturating_add(1);
-                if boot.elapsed_ticks >= WARM_BOOT_TICKS {
+                if boot.elapsed_ticks >= warm_boot_limit {
                     self.transition(AppState::Launcher);
                 }
             }
@@ -947,9 +1000,14 @@ impl Application {
         let Some(runtime) = &mut self.runtime else {
             return;
         };
+        if let Some(request) = runtime.pending_direct.take() {
+            remember_run(runtime, &request);
+            self.transition(AppState::Loading(request));
+            return;
+        }
         let Some(descriptor) = runtime
             .registry
-            .descriptors()
+            .advertised_descriptors()
             .into_iter()
             .find(|descriptor| descriptor.id.as_str() == "signal-stack")
         else {
@@ -966,11 +1024,7 @@ impl Application {
             rules_revision: descriptor.rules_revision,
             seed: runtime.metadata.next_seed(),
         };
-        runtime.system_state.last_selected_game = Some(request.game_id.clone());
-        runtime.system_state.last_game_mode = Some(request.mode_id.clone());
-        if let Err(error) = runtime.repository.save_system_state(&runtime.system_state) {
-            runtime.warning = Some(format!("Launcher state was not remembered: {error}"));
-        }
+        remember_run(runtime, &request);
         self.transition(AppState::Loading(request));
     }
 
@@ -1288,6 +1342,40 @@ impl Application {
             .is_some_and(|runtime| runtime.settings.reduced_motion)
     }
 
+    fn post_privacy_state(&self) -> AppState {
+        let Some(runtime) = &self.runtime else {
+            return AppState::ColdBoot(BootState { elapsed_ticks: 0 });
+        };
+        if let Some(error) = &runtime.startup_error {
+            AppState::FatalError(error.clone())
+        } else if let Some(request) = &runtime.pending_direct {
+            if runtime
+                .startup_options
+                .direct_launch
+                .as_ref()
+                .is_some_and(|direct| direct.quick)
+            {
+                AppState::Loading(request.clone())
+            } else {
+                AppState::SoftwareDetails
+            }
+        } else {
+            AppState::ColdBoot(BootState { elapsed_ticks: 0 })
+        }
+    }
+
+    fn boot_tick_limit(&self, warm: bool) -> u64 {
+        let quiet = self.runtime.as_ref().is_some_and(|runtime| {
+            runtime.startup_options.quiet || runtime.settings.quiet_operation
+        });
+        match (warm, quiet) {
+            (true, true) => 30,
+            (false, true) => 60,
+            (true, false) => WARM_BOOT_TICKS,
+            (false, false) => COLD_BOOT_TICKS,
+        }
+    }
+
     pub(crate) fn best_signal_stack_score(&self) -> Option<u64> {
         self.runtime.as_ref().and_then(|runtime| {
             ranked_scores(&runtime.scores, &signal_stack_ranking_key())
@@ -1317,6 +1405,50 @@ impl Application {
 
     fn bump_revision(&mut self) {
         self.semantic_revision = self.semantic_revision.saturating_add(1);
+    }
+}
+
+fn build_direct_request(
+    options: &StartupOptions,
+    registry: &dyn GameRegistry,
+    system_state: &SystemState,
+    metadata: &mut dyn RunMetadataSource,
+) -> Result<Option<NewRunRequest>, String> {
+    let Some(direct) = &options.direct_launch else {
+        return Ok(None);
+    };
+    let advertised = registry.advertised_descriptors();
+    let hidden = registry.hidden_descriptors();
+    let descriptor = advertised
+        .iter()
+        .chain(hidden.iter())
+        .find(|descriptor| descriptor.id == direct.game_id)
+        .ok_or_else(|| format!("Requested game {} is not installed.", direct.game_id))?;
+    if descriptor.visibility == crate::CatalogVisibility::Hidden
+        && !(descriptor.id.as_str() == "packet-sweep" && system_state.packet_sweep_unlocked)
+    {
+        return Err(format!(
+            "Requested game {} is not available for direct launch.",
+            descriptor.id
+        ));
+    }
+    let mode = descriptor
+        .modes
+        .first()
+        .ok_or_else(|| format!("Requested game {} has no playable mode.", descriptor.id))?;
+    Ok(Some(NewRunRequest {
+        game_id: descriptor.id.clone(),
+        mode_id: mode.id.clone(),
+        rules_revision: descriptor.rules_revision,
+        seed: direct.seed.unwrap_or_else(|| metadata.next_seed()),
+    }))
+}
+
+fn remember_run(runtime: &mut RuntimeServices, request: &NewRunRequest) {
+    runtime.system_state.last_selected_game = Some(request.game_id.clone());
+    runtime.system_state.last_game_mode = Some(request.mode_id.clone());
+    if let Err(error) = runtime.repository.save_system_state(&runtime.system_state) {
+        runtime.warning = Some(format!("Launcher state was not remembered: {error}"));
     }
 }
 
@@ -1578,6 +1710,100 @@ mod tests {
     }
 
     #[test]
+    fn quick_direct_launch_never_skips_privacy() {
+        let mut app = Application::with_services_and_options(
+            HostKind::Native,
+            CalendarDate::new(25, 7, 2026),
+            Box::new(TestRegistry),
+            Box::new(TestRepository::default()),
+            Box::new(TestMetadata),
+            StartupOptions {
+                quiet: false,
+                direct_launch: Some(crate::DirectLaunchRequest {
+                    game_id: GameId::parse("signal-stack").expect("ID"),
+                    quick: true,
+                    seed: Some(RunSeed(42)),
+                }),
+            },
+        );
+
+        assert_eq!(app.state_kind(), AppStateKind::PrivacyNotice);
+        press(&mut app, AppAction::Confirm);
+        assert_eq!(app.state_kind(), AppStateKind::Loading);
+        app.update(SimulationStep {
+            tick: SimulationTick(1),
+        });
+        assert_eq!(app.state_kind(), AppStateKind::Playing);
+    }
+
+    #[test]
+    fn normal_direct_launch_shows_details_before_loading() {
+        let repository = TestRepository {
+            system: SystemState {
+                privacy_acknowledged: true,
+                ..SystemState::default()
+            },
+            ..TestRepository::default()
+        };
+        let mut app = Application::with_services_and_options(
+            HostKind::Native,
+            CalendarDate::new(25, 7, 2026),
+            Box::new(TestRegistry),
+            Box::new(repository),
+            Box::new(TestMetadata),
+            StartupOptions {
+                quiet: false,
+                direct_launch: Some(crate::DirectLaunchRequest {
+                    game_id: GameId::parse("signal-stack").expect("ID"),
+                    quick: false,
+                    seed: None,
+                }),
+            },
+        );
+
+        assert_eq!(app.state_kind(), AppStateKind::SoftwareDetails);
+        press(&mut app, AppAction::Confirm);
+        assert_eq!(app.state_kind(), AppStateKind::Loading);
+    }
+
+    #[test]
+    fn command_line_quiet_shortens_boot_without_changing_saved_setting() {
+        let repository = TestRepository {
+            system: SystemState {
+                privacy_acknowledged: true,
+                ..SystemState::default()
+            },
+            ..TestRepository::default()
+        };
+        let mut app = Application::with_services_and_options(
+            HostKind::Native,
+            CalendarDate::new(25, 7, 2026),
+            Box::new(TestRegistry),
+            Box::new(repository),
+            Box::new(TestMetadata),
+            StartupOptions {
+                quiet: true,
+                direct_launch: None,
+            },
+        );
+
+        for tick in 1..=30 {
+            app.update(SimulationStep {
+                tick: SimulationTick(tick),
+            });
+        }
+
+        assert_eq!(app.state_kind(), AppStateKind::Launcher);
+        assert!(
+            !app.runtime
+                .as_ref()
+                .expect("runtime")
+                .settings
+                .quiet_operation
+        );
+    }
+
+    #[test]
     fn resize_requires_valid_dimensions_and_explicit_resume() {
         let mut app = Application::new(HostKind::Native, CalendarDate::new(25, 7, 2026), true);
         press(&mut app, AppAction::Confirm);
@@ -1765,8 +1991,12 @@ mod tests {
     struct TestRegistry;
 
     impl GameRegistry for TestRegistry {
-        fn descriptors(&self) -> Vec<GameDescriptor> {
+        fn advertised_descriptors(&self) -> Vec<GameDescriptor> {
             vec![test_descriptor()]
+        }
+
+        fn hidden_descriptors(&self) -> Vec<GameDescriptor> {
+            Vec::new()
         }
 
         fn create(&self, game_id: &GameId) -> Result<Box<dyn Game>, GameError> {
@@ -1857,17 +2087,26 @@ mod tests {
     fn test_descriptor() -> GameDescriptor {
         GameDescriptor {
             id: GameId::parse("signal-stack").expect("valid ID"),
-            title: "Signal Stack",
-            category: "Puzzle",
-            fictional_release_date: "21.11.1995",
-            fictional_developer: "Frankenberg Logic Bureau",
-            fictional_publisher: "Sara Circuitworks",
-            premise: "Test",
+            title: "Signal Stack".to_owned(),
+            short_title: "Signal Stack".to_owned(),
+            category: crate::GameCategory::Puzzle,
+            fictional_release_date: Some("21.11.1995".to_owned()),
+            fictional_version: "1.4".to_owned(),
+            catalog_number: Some("TEST-001".to_owned()),
+            fictional_developer: "Frankenberg Logic Bureau".to_owned(),
+            fictional_publisher: "Sara Circuitworks".to_owned(),
+            premise: "Test".to_owned(),
+            visibility: crate::CatalogVisibility::Advertised,
             rules_revision: RulesRevision::new(1).expect("valid revision"),
             minimum_grid: DISPLAY_SIZE,
             modes: vec![ModeDescriptor {
                 id: ModeId::parse("standard-transmission").expect("valid ID"),
-                title: "Standard Transmission",
+                title: "Standard Transmission".to_owned(),
+            }],
+            controls: vec![crate::ControlDescription {
+                action: GameAction::Primary,
+                label: "Test".to_owned(),
+                default_bindings: vec!["X".to_owned()],
             }],
         }
     }

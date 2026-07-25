@@ -1,16 +1,18 @@
 // SPDX-License-Identifier: MPL-2.0
 
+mod cli;
 mod native_storage;
 mod session;
 
 use std::{
-    io,
+    fs, io,
+    path::Path,
     sync::atomic::{AtomicU64, Ordering},
     time::SystemTime,
     time::{Duration, Instant},
 };
 
-use anyhow::{Context, Result, bail};
+use anyhow::{Context, Result};
 use crossterm::event::{
     self, Event, KeyCode as CrosstermKeyCode, KeyEvent, KeyEventKind,
     KeyModifiers as CrosstermKeyModifiers, MouseButton, MouseEventKind,
@@ -22,6 +24,7 @@ use raster_display::{
 use raster_engine::{
     Application, ApplicationRepository, CalendarDate, DeviceInput, FixedStepClock, HostKind,
     InputCapability, InputSystem, KeyCode, KeyModifiers, PhysicalKey, RunMetadataSource, RunSeed,
+    StartupOptions,
 };
 use raster_games::RasterGameRegistry;
 use raster_storage::{InMemoryRepository, Repository};
@@ -33,17 +36,26 @@ use ratatui::{
 
 use session::TerminalSession;
 
+use cli::{Command, parse_arguments};
 use native_storage::NativeByteStorage;
 
 fn main() -> Result<()> {
     let command = parse_arguments()?;
+    match &command {
+        Command::Diagnostics { output } => return run_diagnostics(output.as_deref()),
+        Command::ValidateContent => return validate_content(),
+        _ => {}
+    }
 
     let (session, capability) = TerminalSession::enter()?;
     session.install_panic_cleanup();
 
     let result = match command {
-        Command::Run => run_application(capability),
+        Command::Run(options) => run_application(capability, options),
         Command::DisplayTest => run_display_test(capability),
+        Command::Diagnostics { .. } | Command::ValidateContent => {
+            unreachable!("noninteractive commands return before terminal initialization")
+        }
         #[cfg(debug_assertions)]
         Command::TestPanicAfterTerminalInit => {
             panic!("intentional terminal-restoration test panic")
@@ -54,8 +66,8 @@ fn main() -> Result<()> {
     result
 }
 
-fn run_application(capability: InputCapability) -> Result<()> {
-    let mut app = native_application();
+fn run_application(capability: InputCapability, options: StartupOptions) -> Result<()> {
+    let mut app = native_application(options)?;
     let mut input = InputSystem::new(capability);
     let mut clock = FixedStepClock::new();
     let mut display = DisplayBuffer::canonical();
@@ -102,7 +114,7 @@ fn run_application(capability: InputCapability) -> Result<()> {
     Ok(())
 }
 
-fn native_application() -> Application {
+fn native_application(options: StartupOptions) -> Result<Application> {
     let (repository, warning): (Box<dyn ApplicationRepository>, Option<String>) =
         match NativeByteStorage::open() {
             Ok(storage) => (Box::new(Repository::new(storage)), None),
@@ -113,17 +125,20 @@ fn native_application() -> Application {
                 )),
             ),
         };
-    let mut app = Application::with_services(
+    let registry = RasterGameRegistry::load()
+        .context("bundled content validation failed; run `raster-nights validate-content`")?;
+    let mut app = Application::with_services_and_options(
         HostKind::Native,
         local_date(),
-        Box::new(RasterGameRegistry::new()),
+        Box::new(registry),
         repository,
         Box::new(NativeRunMetadata::new()),
+        options,
     );
     if let Some(warning) = warning {
         app.report_persistence_unavailable(warning);
     }
-    app
+    Ok(app)
 }
 
 #[derive(Debug)]
@@ -188,26 +203,34 @@ fn run_display_test(capability: InputCapability) -> Result<()> {
     Ok(())
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum Command {
-    Run,
-    DisplayTest,
-    #[cfg(debug_assertions)]
-    TestPanicAfterTerminalInit,
+fn validate_content() -> Result<()> {
+    RasterGameRegistry::validate_bundled_content().context("bundled content is invalid")?;
+    println!("bundled content is valid");
+    Ok(())
 }
 
-fn parse_arguments() -> Result<Command> {
-    let mut arguments = std::env::args_os();
-    let _executable = arguments.next();
-    match (arguments.next(), arguments.next()) {
-        (None, None) => Ok(Command::Run),
-        (Some(command), None) if command == "display-test" => Ok(Command::DisplayTest),
-        #[cfg(debug_assertions)]
-        (Some(command), None) if command == "--test-panic-after-terminal-init" => {
-            Ok(Command::TestPanicAfterTerminalInit)
-        }
-        _ => bail!("usage: raster-nights [display-test]"),
+fn run_diagnostics(output: Option<&Path>) -> Result<()> {
+    let report = format!(
+        "RASTER NIGHTS DIAGNOSTICS\n\
+         FORMAT VERSION: 1\n\
+         APPLICATION VERSION: {}\n\
+         PLATFORM: {}-{}\n\
+         LOGICAL DISPLAY: {} X {}\n\
+         NETWORK ACTIVITY: NONE\n\
+         REPORT SCOPE: SANITIZED LOCAL SYSTEM CAPABILITIES\n",
+        env!("CARGO_PKG_VERSION"),
+        std::env::consts::OS,
+        std::env::consts::ARCH,
+        DISPLAY_WIDTH,
+        DISPLAY_HEIGHT,
+    );
+    if let Some(path) = output {
+        fs::write(path, report.as_bytes())
+            .with_context(|| format!("failed to write diagnostic report to {}", path.display()))?;
+    } else {
+        print!("{report}");
     }
+    Ok(())
 }
 
 fn handle_terminal_event(

@@ -270,6 +270,8 @@ pub struct SystemState {
     pub last_selected_game: Option<GameId>,
     pub last_game_mode: Option<ModeId>,
     pub last_score_tag: Option<ThreeCharacterTag>,
+    pub packet_sweep_trace_revealed: bool,
+    pub packet_sweep_unlocked: bool,
 }
 
 #[derive(Clone, Debug, Eq, Error, PartialEq)]

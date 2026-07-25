@@ -43,26 +43,26 @@ exists; unavailable external environments are recorded honestly.
 
 ## Shared architecture and interfaces
 
-- [ ] Rename the terminal package and binary to expose `raster-nights` while
+- [x] Rename the terminal package and binary to expose `raster-nights` while
       retaining `apps/terminal/`.
-- [ ] Add a dependency-free CLI parser for normal launch, `--quiet`,
+- [x] Add a dependency-free CLI parser for normal launch, `--quiet`,
       `display-test`, `diagnostics [--output PATH]`, `validate-content`, and
       `play <signal-stack|loopback> [--quick] [--seed N]`.
-- [ ] Keep Packet Sweep unavailable through direct launch until local unlock.
-- [ ] Add `StartupOptions` and `DirectLaunchRequest` to the engine.
-- [ ] Never skip the privacy acknowledgement.
-- [ ] Make normal direct launch use shortened controls/loading and `--quick`
+- [x] Keep Packet Sweep unavailable through direct launch until local unlock.
+- [x] Add `StartupOptions` and `DirectLaunchRequest` to the engine.
+- [x] Never skip the privacy acknowledgement.
+- [x] Make normal direct launch use shortened controls/loading and `--quick`
       skip only nonessential ceremony.
-- [ ] Make `--quiet` shorten animations without mutating saved settings.
-- [ ] Replace hard-coded catalog metadata with versioned bundled JSON.
-- [ ] Make `GameDescriptor` owned and typed, including fictional version,
+- [x] Make `--quiet` shorten animations without mutating saved settings.
+- [x] Replace hard-coded catalog metadata with versioned bundled JSON.
+- [x] Make `GameDescriptor` owned and typed, including fictional version,
       catalog number, controls, modes, and advertised/hidden visibility.
-- [ ] Expose advertised and hidden registrations separately.
-- [ ] Fail startup and `validate-content` clearly for invalid bundled content.
+- [x] Expose advertised and hidden registrations separately.
+- [x] Fail startup and `validate-content` clearly for invalid bundled content.
 - [ ] Add stable game-result discovery markers.
-- [ ] Migrate system state v1 to v2 while preserving valid v1 files and
+- [x] Migrate system state v1 to v2 while preserving valid v1 files and
       existing privacy, selection, mode, and tag values.
-- [ ] Persist Packet Sweep trace-revealed and unlocked state.
+- [x] Persist Packet Sweep trace-revealed and unlocked state.
 - [x] Add R/OS Standard, Amber, Green, Midnight VGA, High Contrast, and Paper
       palette conversion in both hosts.
 - [ ] Complete settings for palette, reduced motion, quiet operation, and
@@ -123,7 +123,7 @@ exists; unavailable external environments are recorded honestly.
       resize/resume, tmux, and High Contrast.
 - [x] Attempt local SSH QA only if an SSH service is already available. No
       local SSH service was active on 26.07.2026.
-- [ ] Add sanitized diagnostics without usernames, full paths, environment
+- [x] Add sanitized diagnostics without usernames, full paths, environment
       values, network activity, or automatic upload.
 - [ ] Add versioned catalog, manual, and archive content for the DRX-90/R/OS,
       Reçica Computer Works, Signal Stack, Loopback cover-disk notes, existing

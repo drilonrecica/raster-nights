@@ -58,7 +58,7 @@ After completing this plan, a user can:
 ### Native
 
 ```bash
-cargo run -p raster-terminal
+cargo run -p raster-nights
 ```
 
 Then:
