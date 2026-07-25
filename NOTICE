@@ -1,0 +1,61 @@
+Raster Nights
+Copyright 2026 Drilon Reçica
+
+Raster Nights includes third-party open-source software. Direct dependencies
+used by the current foundation are listed below. Complete license texts remain
+available from the linked upstream projects and their distributed packages.
+
+Rust dependencies
+-----------------
+
+anyhow — MIT OR Apache-2.0
+https://github.com/dtolnay/anyhow
+
+console_error_panic_hook — MIT OR Apache-2.0
+https://github.com/rustwasm/console_error_panic_hook
+
+crossterm — MIT
+https://github.com/crossterm-rs/crossterm
+
+rand_chacha and rand_core — MIT OR Apache-2.0
+https://github.com/rust-random/rand
+
+ratatui — MIT
+https://github.com/ratatui/ratatui
+
+ratzilla — MIT OR Apache-2.0
+https://github.com/ratatui/ratzilla
+
+serde and serde_json — MIT OR Apache-2.0
+https://github.com/serde-rs/serde
+https://github.com/serde-rs/json
+
+thiserror — MIT OR Apache-2.0
+https://github.com/dtolnay/thiserror
+
+unicode-width — MIT OR Apache-2.0
+https://github.com/unicode-rs/unicode-width
+
+wasm-bindgen, wasm-bindgen-test, and web-sys — MIT OR Apache-2.0
+https://github.com/wasm-bindgen/wasm-bindgen
+
+Website dependencies
+--------------------
+
+Astro and @astrojs/check — MIT
+https://github.com/withastro/astro
+
+TypeScript — Apache-2.0
+https://github.com/microsoft/TypeScript
+
+Bundled renderer data
+---------------------
+
+The Beamterm renderer embedded through Ratzilla includes a bitmap atlas derived
+from Hack Regular. Hack is Copyright 2018 Source Foundry Authors and is
+distributed under the MIT License.
+https://github.com/source-foundry/Hack
+
+This notice records direct dependencies and bundled renderer data. Release
+packaging will also include a machine-generated report for transitive
+dependencies.

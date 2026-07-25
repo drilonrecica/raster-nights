@@ -146,7 +146,7 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
 cargo build --workspace
 wasm-pack build apps/web --target web --no-pack --out-dir ../../website/public/wasm
-wasm-pack test --headless --chrome crates/raster-games
+wasm-pack test --headless --firefox crates/raster-games
 npm --prefix website run build
 ```
 
