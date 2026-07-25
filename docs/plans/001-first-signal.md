@@ -16,6 +16,12 @@ Related documents:
 - `docs/DEVELOPMENT.md`
 - `docs/DECISIONS.md`
 
+Implementation checkpoint (25.07.2026): repository foundation, shared domain
+types, canonical display, deterministic clock, normalized input, diagnostic
+native/web hosts, website shell, and CI validation are complete. The next
+vertical slice starts with the top-level application state machine; the full
+First Signal product loop remains in progress.
+
 ---
 
 ## 1. Goal
@@ -318,20 +324,20 @@ raster-nights/
 
 ## Workstream A — Repository foundation
 
-- [ ] Create Cargo workspace.
-- [ ] Add workspace package metadata.
-- [ ] Add shared lint settings where appropriate.
-- [ ] Add `.gitignore`.
-- [ ] Add application and shared crates.
-- [ ] Add `rand_chacha` and `rand_core` only to `raster-games`, with unused
+- [x] Create Cargo workspace.
+- [x] Add workspace package metadata.
+- [x] Add shared lint settings where appropriate.
+- [x] Add `.gitignore`.
+- [x] Add application and shared crates.
+- [x] Add `rand_chacha` and `rand_core` only to `raster-games`, with unused
       defaults disabled and MIT/Apache notices recorded.
-- [ ] Add website skeleton.
-- [ ] Add `scripts/check.sh`.
-- [ ] Configure ignored `wasm-pack` output for the website.
-- [ ] Confirm native workspace build.
-- [ ] Confirm `wasm-pack` browser build.
-- [ ] Confirm headless Wasm test execution.
-- [ ] Confirm website build.
+- [x] Add website skeleton.
+- [x] Add `scripts/check.sh`.
+- [x] Configure ignored `wasm-pack` output for the website.
+- [x] Confirm native workspace build.
+- [x] Confirm `wasm-pack` browser build.
+- [x] Confirm headless Wasm test execution.
+- [x] Confirm website build.
 
 ### Acceptance
 
@@ -344,20 +350,20 @@ raster-nights/
 
 Add explicit newtypes/enums for:
 
-- [ ] `GameId`
-- [ ] `ModeId`
-- [ ] `RulesRevision`
-- [ ] `RunSeed`
-- [ ] `SimulationTick`
-- [ ] `SimulationStep`
-- [ ] `GridPoint`
-- [ ] `GridSize`
-- [ ] `GridRect`
-- [ ] `GameStatus`
-- [ ] `GameResult`
-- [ ] `ThreeCharacterTag`
-- [ ] `InputCapability`
-- [ ] host-independent `SemanticUiTree`, `SemanticNode`, stable IDs, roles,
+- [x] `GameId`
+- [x] `ModeId`
+- [x] `RulesRevision`
+- [x] `RunSeed`
+- [x] `SimulationTick`
+- [x] `SimulationStep`
+- [x] `GridPoint`
+- [x] `GridSize`
+- [x] `GridRect`
+- [x] `GameStatus`
+- [x] `GameResult`
+- [x] `ThreeCharacterTag`
+- [x] `InputCapability`
+- [x] host-independent `SemanticUiTree`, `SemanticNode`, stable IDs, roles,
       states, and actions defined by `docs/ARCHITECTURE.md`
 - [ ] storage repository ports used by the application
 
@@ -374,14 +380,14 @@ Add explicit newtypes/enums for:
 
 ## Workstream C — Display façade
 
-- [ ] Define canonical 100×36 constants.
-- [ ] Define `GameCell`, style, and semantic color concepts.
-- [ ] Implement an in-memory buffer adapter.
-- [ ] Add `put`, `text`, `fill_rect`, `border`, and clipping.
-- [ ] Handle out-of-bounds draws safely.
-- [ ] Validate single-cell glyph inventory.
-- [ ] Add readable buffer snapshot format.
-- [ ] Render one test grid.
+- [x] Define canonical 100×36 constants.
+- [x] Define `GameCell`, style, and semantic color concepts.
+- [x] Implement an in-memory buffer adapter.
+- [x] Add `put`, `text`, `fill_rect`, `border`, and clipping.
+- [x] Handle out-of-bounds draws safely.
+- [x] Validate single-cell glyph inventory.
+- [x] Add readable buffer snapshot format.
+- [x] Render one test grid.
 
 ### Acceptance
 
@@ -393,12 +399,12 @@ Add explicit newtypes/enums for:
 
 ## Workstream D — Fixed-step clock
 
-- [ ] Define 60 Hz canonical simulation.
-- [ ] Implement accumulator helper.
-- [ ] Clamp large stalls.
-- [ ] Support pause without catch-up.
-- [ ] Expose ticks, not wall-clock duration, to game logic.
-- [ ] Test exact step counts.
+- [x] Define 60 Hz canonical simulation.
+- [x] Implement accumulator helper.
+- [x] Clamp large stalls.
+- [x] Support pause without catch-up.
+- [x] Expose ticks, not wall-clock duration, to game logic.
+- [x] Test exact step counts.
 
 ### Acceptance
 
@@ -409,17 +415,17 @@ Add explicit newtypes/enums for:
 
 ## Workstream E — Input normalization
 
-- [ ] Define physical key representation.
-- [ ] Define global app actions.
-- [ ] Define Signal Stack actions.
-- [ ] Implement pressed/held/released state.
-- [ ] Implement engine repeat timing.
-- [ ] Support enhanced and compatibility input capabilities.
-- [ ] Add arrow and HJKL defaults.
-- [ ] Add text-entry context.
-- [ ] Add `Esc` hierarchy.
-- [ ] Add `Ctrl+C` interrupt behavior.
-- [ ] Add focus and resize events.
+- [x] Define physical key representation.
+- [x] Define global app actions.
+- [x] Define Signal Stack actions.
+- [x] Implement pressed/held/released state.
+- [x] Implement engine repeat timing.
+- [x] Support enhanced and compatibility input capabilities.
+- [x] Add arrow and HJKL defaults.
+- [x] Add text-entry context.
+- [x] Add `Esc` hierarchy.
+- [x] Add `Ctrl+C` interrupt behavior.
+- [x] Add focus and resize events.
 
 ### Acceptance
 
@@ -814,27 +820,27 @@ Design a 100×36 layout with:
 
 ## Workstream L — Native host
 
-- [ ] CLI.
-- [ ] terminal capability check.
-- [ ] 100×36 check.
-- [ ] restoration guard.
-- [ ] raw mode.
-- [ ] alternate screen.
-- [ ] cursor.
-- [ ] input polling.
-- [ ] mouse capture.
-- [ ] resize events.
-- [ ] frame loop.
-- [ ] panic hook.
-- [ ] enhanced keyboard capability detection.
-- [ ] keyboard enhancement restoration.
-- [ ] compatibility input mode.
+- [x] CLI.
+- [x] terminal capability check.
+- [x] 100×36 check.
+- [x] restoration guard.
+- [x] raw mode.
+- [x] alternate screen.
+- [x] cursor.
+- [x] input polling.
+- [x] mouse capture.
+- [x] resize events.
+- [x] frame loop.
+- [x] panic hook.
+- [x] enhanced keyboard capability detection.
+- [x] keyboard enhancement restoration.
+- [x] compatibility input mode.
 - [ ] centered-display pointer offset mapping.
-- [ ] shutdown.
+- [x] shutdown.
 
 ### Manual cases
 
-- [ ] normal exit.
+- [x] normal exit.
 - [ ] first and second `Ctrl+C`.
 - [ ] panic.
 - [ ] resize.
@@ -850,20 +856,20 @@ Shell is usable immediately after every tested exit path.
 
 ## Workstream M — Browser host
 
-- [ ] Wasm entry.
-- [ ] Ratzilla WebGL2.
-- [ ] Canvas fallback.
-- [ ] animation frame loop.
-- [ ] power-on.
-- [ ] dynamic import only after `POWER ON`.
-- [ ] keyboard focus.
+- [x] Wasm entry.
+- [x] Ratzilla WebGL2.
+- [x] Canvas fallback.
+- [x] animation frame loop.
+- [x] power-on.
+- [x] dynamic import only after `POWER ON`.
+- [x] keyboard focus.
 - [ ] mouse coordinates to grid.
 - [ ] focus loss pause.
 - [ ] hidden-tab pause.
 - [ ] explicit resume.
 - [ ] storage.
-- [ ] display scaling.
-- [ ] unsupported message.
+- [x] display scaling.
+- [x] unsupported message.
 - [ ] semantic mirror for privacy, launcher, details, pause, game over, and tag entry.
 
 ### Acceptance
@@ -878,16 +884,16 @@ Shell is usable immediately after every tested exit path.
 
 ## Workstream N — Website skeleton
 
-- [ ] Raster Nights hero.
-- [ ] tagline.
-- [ ] `POWER ON DRX-90`.
-- [ ] terminal/SSH/tmux message.
-- [ ] explicit development-status installation notice with no fake command.
-- [ ] game catalog section for Signal Stack.
-- [ ] privacy statement.
-- [ ] source link to `https://github.com/drilonrecica/raster-nights`.
-- [ ] machine mount.
-- [ ] accessible normal page navigation.
+- [x] Raster Nights hero.
+- [x] tagline.
+- [x] `POWER ON DRX-90`.
+- [x] terminal/SSH/tmux message.
+- [x] explicit development-status installation notice with no fake command.
+- [x] game catalog section for Signal Stack.
+- [x] privacy statement.
+- [x] source link to `https://github.com/drilonrecica/raster-nights`.
+- [x] machine mount.
+- [x] accessible normal page navigation.
 
 ### Acceptance
 
@@ -900,26 +906,26 @@ The site remains useful when the Wasm application fails to load.
 ### Tests
 
 - [ ] engine state transitions.
-- [ ] input.
-- [ ] clock.
-- [ ] display.
+- [x] input.
+- [x] clock.
+- [x] display.
 - [ ] Signal Stack.
 - [ ] storage.
 - [ ] golden run native.
 - [ ] golden run Wasm.
-- [ ] enhanced and compatibility input.
+- [x] enhanced and compatibility input.
 - [ ] semantic tree and browser mirror.
-- [ ] snapshots.
+- [x] snapshots.
 
 ### CI
 
-- [ ] `cargo fmt --check`
-- [ ] Clippy
-- [ ] tests
-- [ ] workspace build
-- [ ] `wasm-pack` build
-- [ ] headless Wasm golden tests
-- [ ] website build
+- [x] `cargo fmt --check`
+- [x] Clippy
+- [x] tests
+- [x] workspace build
+- [x] `wasm-pack` build
+- [x] headless Wasm smoke tests
+- [x] website build
 
 ### Acceptance
 
