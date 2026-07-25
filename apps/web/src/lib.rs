@@ -252,28 +252,70 @@ mod browser {
             })
             .map_err(js_error)?;
 
-        terminal.draw_web(move |frame| {
+        let callback = Rc::new(RefCell::new(None));
+        let callback_for_frame = Rc::clone(&callback);
+        *callback.borrow_mut() = Some(Closure::<dyn FnMut()>::new(move || {
             let mut runtime = runtime.borrow_mut();
             runtime.update();
-            frame.buffer_mut().reset();
-            let area = frame.area();
-            if area.width < DISPLAY_WIDTH || area.height < DISPLAY_HEIGHT {
-                frame.buffer_mut().set_string(
-                    area.x,
-                    area.y,
-                    "DRX-90 DISPLAY AREA UNAVAILABLE",
-                    ratzilla::ratatui::style::Style::default()
-                        .fg(ratzilla::ratatui::style::Color::Yellow),
-                );
+            let exit_requested = runtime.app.exit_requested();
+            let draw_succeeded = terminal
+                .draw(|frame| render_browser_frame(frame, &runtime))
+                .is_ok();
+            drop(runtime);
+
+            if exit_requested || !draw_succeeded {
+                EVENT_QUEUE.with(|queue| {
+                    queue.borrow_mut().take();
+                });
+                let _ = dispatch_powered_off();
                 return;
             }
-            let origin = GridPoint::new(
-                area.x + (area.width - DISPLAY_WIDTH) / 2,
-                area.y + (area.height - DISPLAY_HEIGHT) / 2,
+
+            if let Some(callback) = callback_for_frame.borrow().as_ref() {
+                let _ = request_browser_frame(callback);
+            }
+        }));
+        request_browser_frame(
+            callback
+                .borrow()
+                .as_ref()
+                .expect("animation callback is installed before scheduling"),
+        )
+    }
+
+    fn render_browser_frame(frame: &mut ratzilla::ratatui::Frame<'_>, runtime: &BrowserRuntime) {
+        frame.buffer_mut().reset();
+        let area = frame.area();
+        if area.width < DISPLAY_WIDTH || area.height < DISPLAY_HEIGHT {
+            frame.buffer_mut().set_string(
+                area.x,
+                area.y,
+                "DRX-90 DISPLAY AREA UNAVAILABLE",
+                ratzilla::ratatui::style::Style::default()
+                    .fg(ratzilla::ratatui::style::Color::Yellow),
             );
-            copy_to_ratatui(&runtime.display, frame.buffer_mut(), origin);
-        });
-        Ok(())
+            return;
+        }
+        let origin = GridPoint::new(
+            area.x + (area.width - DISPLAY_WIDTH) / 2,
+            area.y + (area.height - DISPLAY_HEIGHT) / 2,
+        );
+        copy_to_ratatui(&runtime.display, frame.buffer_mut(), origin);
+    }
+
+    fn request_browser_frame(callback: &Closure<dyn FnMut()>) -> Result<(), JsValue> {
+        web_sys::window()
+            .ok_or_else(|| JsValue::from_str("window unavailable"))?
+            .request_animation_frame(callback.as_ref().unchecked_ref())
+            .map(|_| ())
+    }
+
+    fn dispatch_powered_off() -> Result<(), JsValue> {
+        let event = Event::new("raster-nights-powered-off")?;
+        web_sys::window()
+            .ok_or_else(|| JsValue::from_str("window unavailable"))?
+            .dispatch_event(&event)
+            .map(|_| ())
     }
 
     fn register_browser_events(events: Rc<RefCell<Vec<BrowserEvent>>>) -> Result<(), JsValue> {

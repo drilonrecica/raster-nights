@@ -124,7 +124,22 @@ import "../styles/global.css";
         throw new Error("DRX-90 host controls are missing");
       }
 
+      let hasStarted = false;
+      window.addEventListener("raster-nights-powered-off", () => {
+        display.hidden = true;
+        display.replaceChildren();
+        semanticMirror.replaceChildren();
+        status.textContent = "POWER: OFF";
+        powerButton.textContent = "RESET DRX-90";
+        powerButton.disabled = false;
+        powerButton.hidden = false;
+      });
+
       powerButton.addEventListener("click", async () => {
+        if (hasStarted) {
+          window.location.reload();
+          return;
+        }
         powerButton.disabled = true;
         errorPanel.hidden = true;
         status.textContent = "POWER: LOADING LOCAL SYSTEM";
@@ -149,6 +164,7 @@ import "../styles/global.css";
           display.focus();
           status.textContent = "INPUT LINK: ACTIVE";
           powerButton.hidden = true;
+          hasStarted = true;
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
           errorPanel.textContent = `DRX-90 STARTUP FAILED: ${message}`;
