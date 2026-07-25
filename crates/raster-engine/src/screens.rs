@@ -26,7 +26,7 @@ pub(crate) fn render(app: &Application, display: &mut dyn Display) -> Result<(),
             render_boot(display, app.date(), boot.elapsed_ticks, true)?;
         }
         AppState::Launcher => render_launcher(display, app.persistence_warning())?,
-        AppState::SoftwareDetails => render_details(display)?,
+        AppState::SoftwareDetails => render_details(display, app.best_signal_stack_score())?,
         AppState::Loading(_) => render_loading(display)?,
         AppState::Playing(session) => session.game.render(display)?,
         AppState::Paused(pause) => {
@@ -182,7 +182,7 @@ fn render_launcher(
         display,
         3,
         2,
-        "[F1] HELP  [F2] CATALOG  [F3] SCORES  [F10] R/OS",
+        "[F3] LOCAL RECORDS                              [F10] R/OS",
     )?;
     horizontal_rule(display, 3)?;
     emphasized(display, 4, 6, "FEATURED SOFTWARE")?;
@@ -218,7 +218,7 @@ fn render_launcher(
     Ok(())
 }
 
-fn render_details(display: &mut dyn Display) -> Result<(), GlyphError> {
+fn render_details(display: &mut dyn Display, best_score: Option<u64>) -> Result<(), GlyphError> {
     frame(display, "AFTERHOURS / SOFTWARE DETAILS")?;
     emphasized(display, 5, 4, "SIGNAL STACK")?;
     text(
@@ -235,7 +235,15 @@ fn render_details(display: &mut dyn Display) -> Result<(), GlyphError> {
     )?;
     text(display, 5, 13, "MODE          STANDARD TRANSMISSION")?;
     text(display, 5, 15, "DIFFICULTY    STANDARD")?;
-    text(display, 5, 17, "LOCAL RECORD  NO RECORDS")?;
+    text(
+        display,
+        5,
+        17,
+        &best_score.map_or_else(
+            || "LOCAL RECORD  NO RECORDS".to_owned(),
+            |score| format!("LOCAL RECORD  {score:010}"),
+        ),
+    )?;
     text(display, 5, 21, "MOVE          LEFT / RIGHT")?;
     text(display, 5, 22, "ROTATE        UP / Z")?;
     text(display, 5, 23, "DROP          DOWN / SPACE")?;

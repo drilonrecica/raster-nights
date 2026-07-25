@@ -270,6 +270,8 @@ pub fn map_key_to_action(key: PhysicalKey, context: InputContext) -> Option<AppA
             KeyCode::ArrowDown | KeyCode::Character('j' | 'J') => Some(AppAction::NavigateDown),
             KeyCode::Enter | KeyCode::Space => Some(AppAction::Confirm),
             KeyCode::Escape => Some(AppAction::Back),
+            KeyCode::Function(3) => Some(AppAction::OpenScores),
+            KeyCode::Function(10) => Some(AppAction::Back),
             _ => None,
         },
         InputContext::Gameplay => match key.code {
@@ -322,6 +324,24 @@ mod tests {
         );
 
         assert_eq!(action, Some(AppAction::TextInput('h')));
+    }
+
+    #[test]
+    fn launcher_function_keys_map_to_implemented_destinations() {
+        assert_eq!(
+            map_key_to_action(
+                PhysicalKey::new(KeyCode::Function(3)),
+                InputContext::Navigation
+            ),
+            Some(AppAction::OpenScores)
+        );
+        assert_eq!(
+            map_key_to_action(
+                PhysicalKey::new(KeyCode::Function(10)),
+                InputContext::Navigation
+            ),
+            Some(AppAction::Back)
+        );
     }
 
     #[test]

@@ -143,6 +143,7 @@ pub enum AppAction {
     Back,
     Pause,
     OpenShell,
+    OpenScores,
     OpenSettings,
     Interrupt,
     ClearText,

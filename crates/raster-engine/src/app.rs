@@ -419,6 +419,10 @@ impl Application {
             }
             AppState::Launcher => match action {
                 AppAction::Confirm => self.transition(AppState::SoftwareDetails),
+                AppAction::OpenScores => self.transition(AppState::Scores(ScoresState {
+                    key: signal_stack_ranking_key(),
+                    saved: false,
+                })),
                 AppAction::Back => self.transition(AppState::SystemMenu(SystemMenuState {
                     selected: SystemMenuItem::Return,
                 })),
@@ -490,8 +494,8 @@ impl Application {
     }
 
     pub fn handle_focus_lost(&mut self) {
-        if matches!(self.state, AppState::Playing(_)) {
-            self.pause(PauseReason::FocusLost);
+        if pause_nested_game(&mut self.state) {
+            self.bump_revision();
         }
     }
 
@@ -877,6 +881,9 @@ impl Application {
         };
         runtime.system_state.last_selected_game = Some(request.game_id.clone());
         runtime.system_state.last_game_mode = Some(request.mode_id.clone());
+        if let Err(error) = runtime.repository.save_system_state(&runtime.system_state) {
+            runtime.warning = Some(format!("Launcher state was not remembered: {error}"));
+        }
         self.transition(AppState::Loading(request));
     }
 
@@ -1194,6 +1201,14 @@ impl Application {
             .is_some_and(|runtime| runtime.settings.reduced_motion)
     }
 
+    pub(crate) fn best_signal_stack_score(&self) -> Option<u64> {
+        self.runtime.as_ref().and_then(|runtime| {
+            ranked_scores(&runtime.scores, &signal_stack_ranking_key())
+                .first()
+                .map(|record| record.score)
+        })
+    }
+
     fn begin_shutdown(&mut self, urgent: bool) {
         self.transition(AppState::Shutdown(ShutdownState {
             elapsed_ticks: 0,
@@ -1295,6 +1310,15 @@ fn result_key(result: &GameResult) -> crate::ScoreRankingKey {
     }
 }
 
+fn signal_stack_ranking_key() -> crate::ScoreRankingKey {
+    crate::ScoreRankingKey {
+        game_id: crate::GameId::parse("signal-stack").expect("static game ID is valid"),
+        mode_id: crate::ModeId::parse("standard-transmission").expect("static mode ID is valid"),
+        rules_revision: crate::RulesRevision::new(1).expect("static rules revision is valid"),
+        assistance_profile: canonical_assistance(),
+    }
+}
+
 fn default_tag() -> ThreeCharacterTag {
     ThreeCharacterTag::parse("---").expect("default score tag is valid")
 }
@@ -1335,6 +1359,27 @@ const fn pause_semantic_id(item: PauseMenuItem) -> &'static str {
         PauseMenuItem::Settings => "pause.settings",
         PauseMenuItem::Return => "pause.return",
         PauseMenuItem::Shutdown => "pause.shutdown",
+    }
+}
+
+fn pause_nested_game(state: &mut AppState) -> bool {
+    match state {
+        AppState::Playing(_) => {
+            let previous = std::mem::replace(state, AppState::Transitioning);
+            let AppState::Playing(mut session) = previous else {
+                unreachable!("state matched before extraction");
+            };
+            session.game.set_paused(true);
+            *state = AppState::Paused(PauseState {
+                session,
+                selected: PauseMenuItem::Resume,
+                reason: PauseReason::FocusLost,
+            });
+            true
+        }
+        AppState::ResizeSuspended(resize) => pause_nested_game(&mut resize.previous),
+        AppState::InterruptConfirm(previous) => pause_nested_game(previous),
+        _ => false,
     }
 }
 
@@ -1531,6 +1576,25 @@ mod tests {
         app.update(SimulationStep {
             tick: SimulationTick(2),
         });
+        assert_eq!(app.state_kind(), AppStateKind::Paused);
+    }
+
+    #[test]
+    fn focus_loss_while_resize_suspended_still_requires_game_resume() {
+        let mut app = serviced_app();
+        press(&mut app, AppAction::Confirm);
+        press(&mut app, AppAction::Confirm);
+        press(&mut app, AppAction::Confirm);
+        press(&mut app, AppAction::Confirm);
+        app.update(SimulationStep {
+            tick: SimulationTick(1),
+        });
+
+        app.handle_resize(80, 24);
+        app.handle_focus_lost();
+        app.handle_resize(100, 36);
+        press(&mut app, AppAction::Confirm);
+
         assert_eq!(app.state_kind(), AppStateKind::Paused);
     }
 
