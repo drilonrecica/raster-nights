@@ -1,0 +1,31 @@
+{
+  "format_version": 1,
+  "rights": "reserved_creative_content",
+  "overview": "AfterHours preserves software records from the certified DRX-90 commercial period, 05.10.1993 through 31.12.1999.",
+  "timeline": [
+    { "date": "05.10.1993", "event": "Certified DRX-90 commercial period begins." },
+    { "date": "19.12.1993", "event": "Loopback released." },
+    { "date": "08.02.1994", "event": "Bureau 9 released." },
+    { "date": "27.05.1994", "event": "Hazard Registry released." },
+    { "date": "21.11.1995", "event": "Signal Stack released." },
+    { "date": "11.08.1996", "event": "Relay Breaker released." },
+    { "date": "06.06.1997", "event": "Mnemonic Nullway released." },
+    { "date": "17.09.1998", "event": "Afterline 99 released." },
+    { "date": "31.12.1999", "event": "Certified DRX-90 software period ends." }
+  ],
+  "technologies": [
+    {
+      "name": "RCW V/A-16 Audio Array",
+      "summary": "A hybrid audio system supporting tones, synthesis, samples, and filtered noise."
+    },
+    {
+      "name": "V-SCAPE Perspective System",
+      "summary": "Vranidoll Signal Works perspective software used for corridor and road projection inside the DRX-90 display.",
+      "revisions": [
+        "V-SCAPE 1.0 — 1995 — experimental corridor projection",
+        "V-SCAPE 2.2 — 1997 — used by Mnemonic Nullway",
+        "V-SCAPE 3.7 — 1998 — used by Afterline 99"
+      ]
+    }
+  ]
+}

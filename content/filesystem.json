@@ -1,0 +1,58 @@
+{
+  "format_version": 1,
+  "rights": "reserved_creative_content",
+  "root": "R:\\",
+  "privacy_notice": "This is a curated fictional filesystem. It never lists or reads files from the user's computer.",
+  "entries": [
+    {
+      "path": "R:\\SYSTEM\\README.TXT",
+      "type": "text",
+      "summary": "DRX-90 and R/OS operating overview."
+    },
+    {
+      "path": "R:\\SYSTEM\\DRIVERS.LOG",
+      "type": "text",
+      "summary": "Curated display and audio-driver status."
+    },
+    {
+      "path": "R:\\SYSTEM\\WARRANTY.DAT",
+      "type": "data",
+      "summary": "Certified-period record ending 31.12.1999."
+    },
+    {
+      "path": "R:\\AFTERHRS\\GAMES\\",
+      "type": "directory",
+      "summary": "Installed AfterHours software registrations."
+    },
+    {
+      "path": "R:\\AFTERHRS\\MANUALS\\",
+      "type": "directory",
+      "summary": "Plain-text software manuals and controls references."
+    },
+    {
+      "path": "R:\\AFTERHRS\\SCORES\\",
+      "type": "directory",
+      "summary": "Local score records."
+    },
+    {
+      "path": "R:\\ARCHIVE\\STUDIOS\\",
+      "type": "directory",
+      "summary": "Curated developer and publisher profiles."
+    },
+    {
+      "path": "R:\\ARCHIVE\\REVIEWS\\",
+      "type": "directory",
+      "summary": "Recovered software reviews."
+    },
+    {
+      "path": "R:\\ARCHIVE\\RECOVERED\\",
+      "type": "directory",
+      "summary": "Incomplete archival material."
+    },
+    {
+      "path": "R:\\TEMP\\",
+      "type": "directory",
+      "summary": "Temporary virtual workspace."
+    }
+  ]
+}

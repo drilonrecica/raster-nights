@@ -1,0 +1,42 @@
+{
+  "format_version": 1,
+  "rights": "reserved_creative_content",
+  "studios": [
+    {
+      "name": "Reçica Computer Works",
+      "abbreviation": "RCW",
+      "role": "DRX-90 manufacturer, R/OS and AfterHours operator, publisher, and distributor.",
+      "character": "Serious, technically ambitious, bureaucratic, and proud of compatibility."
+    },
+    {
+      "name": "Frankenberg Logic Bureau",
+      "abbreviation": "FLB",
+      "role": "Puzzle and strategy developer; Signal Stack developer and Bureau 9 verifier.",
+      "character": "Precise, bureaucratic, and convinced that all problems can be classified."
+    },
+    {
+      "name": "Sara Circuitworks",
+      "abbreviation": "SCW",
+      "role": "Mainstream developer and publisher; Signal Stack publisher and Relay Breaker developer.",
+      "character": "Professional, melodic, reliable, and commercially polished."
+    },
+    {
+      "name": "Noah Arc Labs",
+      "abbreviation": "NAL",
+      "role": "Experimental prototypes, vehicle logic, unusual algorithms, and hidden features.",
+      "character": "Ambitious and inventive, with manuals that occasionally arrive after the ideas."
+    },
+    {
+      "name": "Vranidoll Signal Works",
+      "abbreviation": "VSW",
+      "role": "Foundational display, signal-processing, and V-SCAPE perspective technology.",
+      "character": "Technically respected, secretive, and relied upon by other studios."
+    },
+    {
+      "name": "Hofheim Home Software",
+      "abbreviation": "HHS",
+      "role": "Home software, utilities, Bureau 9, Hazard Registry, and cover-disk products.",
+      "character": "Warm, practical, underestimated, and durable."
+    }
+  ]
+}

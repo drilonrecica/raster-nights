@@ -1,50 +1,37 @@
 ---
 // SPDX-License-Identifier: MPL-2.0
 
-import "../styles/global.css";
+import systemContent from "../../../content/system.json";
+import reviewsContent from "../../../content/reviews.json";
+import BaseLayout from "../layouts/BaseLayout.astro";
 ---
 
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width" />
-    <meta
-      name="description"
-      content="Raster Nights is a curated retro game system for the fictional DRX-90 home computer."
-    />
-    <title>Raster Nights — DRX-90 Software Archive</title>
-  </head>
-  <body>
-    <a class="skip-link" href="#main">Skip to content</a>
-    <header class="site-header">
-      <a class="wordmark" href="/">Raster Nights</a>
-      <nav aria-label="Primary navigation">
-        <a href="#machine">DRX-90</a>
-        <a href="#catalog">Software</a>
-        <a href="#privacy">Privacy</a>
-        <a href="https://github.com/drilonrecica/raster-nights">Source</a>
-      </nav>
-    </header>
-
-    <main id="main">
+<BaseLayout
+  title="Raster Nights — DRX-90 Software Archive"
+  description="Raster Nights is a curated retro game system for the fictional DRX-90 home computer."
+>
       <section class="hero" aria-labelledby="hero-title">
-        <p class="eyebrow">Reçica Computer Works archive terminal</p>
-        <h1 id="hero-title">Substantial games for a computer that never existed.</h1>
+        <p class="eyebrow">Raster Nights system preview</p>
+        <h1 id="hero-title">Lost games for a computer that never existed.</h1>
         <p class="lede">
           Raster Nights runs the same deterministic Rust games in a normal
           terminal—including through SSH and inside tmux—and in the
           browser-mounted DRX-90.
         </p>
+        <div class="hero-actions">
+          <a class="button-link primary-action" href="#machine">Power on DRX-90</a>
+          <a class="button-link" href="#install">Install for terminal</a>
+        </div>
         <p class="development-status">
-          Development build. Public installation packages are not available yet.
+          Development preview. Tagged release archives, Homebrew distribution,
+          and crates.io installation are not published yet.
         </p>
       </section>
 
       <section id="machine" class="machine-section" aria-labelledby="machine-title">
         <div class="section-heading">
           <p class="eyebrow">DRX-90 / R/OS</p>
-          <h2 id="machine-title">Browser diagnostic</h2>
+          <h2 id="machine-title">Browser system</h2>
         </div>
 
         <div class="machine">
@@ -65,6 +52,20 @@ import "../styles/global.css";
             </div>
             <div id="machine-error" class="machine-error" role="alert" hidden></div>
           </div>
+          <div id="touch-controls" class="touch-controls" aria-label="DRX-90 touch controls" hidden>
+            <div class="direction-pad" aria-label="Directional controls">
+              <button type="button" data-touch-action="move-up" aria-label="Move up">▲</button>
+              <button type="button" data-touch-action="move-left" aria-label="Move left">◀</button>
+              <button type="button" data-touch-action="move-down" aria-label="Move down">▼</button>
+              <button type="button" data-touch-action="move-right" aria-label="Move right">▶</button>
+            </div>
+            <div class="action-pad" aria-label="Game controls">
+              <button type="button" data-touch-action="rotate-counterclockwise">ROTATE L</button>
+              <button type="button" data-touch-action="rotate-clockwise">ROTATE R</button>
+              <button type="button" data-touch-action="hold">HOLD</button>
+              <button type="button" data-touch-action="hard-drop">DROP</button>
+            </div>
+          </div>
           <div class="machine-controls">
             <button id="power-button" class="power-button" type="button">
               POWER ON DRX-90
@@ -76,23 +77,110 @@ import "../styles/global.css";
         </div>
         <p class="orientation-note">
           Real-time games will require landscape orientation. System pages remain
-          available in portrait.
+          available in portrait. Touch controls appear only when the bundled
+          browser host supports them.
         </p>
       </section>
 
       <section id="catalog" class="catalog-section" aria-labelledby="catalog-title">
         <div class="section-heading">
           <p class="eyebrow">AfterHours featured software</p>
-          <h2 id="catalog-title">Signal Stack</h2>
+          <h2 id="catalog-title">System Preview software</h2>
+        </div>
+        <div class="card-grid">
+          <article class="archive-card">
+            <p class="card-meta">21.11.1995 / SCW-AH-195</p>
+            <h3>Signal Stack</h3>
+            <p>
+              Align signal packets and clear channels before the transmission
+              matrix saturates. Standard Transmission is the first complete
+              flagship mode.
+            </p>
+            <a href="/manuals/#signal-stack">Read the manual</a>
+          </article>
+          <article class="archive-card">
+            <p class="card-meta">19.12.1993 / bundled software</p>
+            <h3>Loopback</h3>
+            <p>
+              Guide a growing route through paired network ports in a brisk
+              two-minute Quick Circuit.
+            </p>
+            <a href="/manuals/#loopback">Read the cover-disk notes</a>
+          </article>
+        </div>
+        <p class="catalog-note">
+          This is the advertised 0.1 catalog. Future milestone software remains
+          in development.
+        </p>
+      </section>
+
+      <section id="install" class="install-section" aria-labelledby="install-title">
+        <div class="section-heading">
+          <p class="eyebrow">Native terminal</p>
+          <h2 id="install-title">Run the development build</h2>
         </div>
         <p>
-          Route falling data packets through a saturated switching matrix. The
-          current First Signal build provides Standard Transmission with
-          identical deterministic rules in the terminal and browser.
+          Until tagged packages are published, install from the public source
+          checkout with stable Rust 1.90 or newer:
         </p>
+        <pre><code>git clone https://github.com/drilonrecica/raster-nights.git
+cd raster-nights
+cargo install --locked --path apps/terminal
+raster-nights</code></pre>
+        <p>Direct launch and local diagnostics are available from the same checkout:</p>
+        <pre><code>raster-nights play signal-stack --quick
+raster-nights diagnostics
+raster-nights display-test</code></pre>
+        <p>
+          Install on the machine where the game will run. For a remote machine,
+          connect normally and launch it inside tmux:
+        </p>
+        <pre><code>ssh my-server
+tmux new -s raster-nights
+raster-nights</code></pre>
         <p class="catalog-note">
-          Catalog status: Signal Stack playable; remaining 0.1 software in
-          development.
+          Raster Nights does not operate a hosted SSH service. tmux or GNU Screen
+          preserves the running process if the SSH client disconnects.
+        </p>
+      </section>
+
+      <section id="archive-preview" class="archive-section" aria-labelledby="archive-title">
+        <div class="section-heading">
+          <p class="eyebrow">{systemContent.machine.operating_system}</p>
+          <h2 id="archive-title">{systemContent.machine.name}</h2>
+        </div>
+        <p>{systemContent.machine.overview[0]}</p>
+        <p>{systemContent.manufacturer.profile[0]}</p>
+        <div class="section-actions">
+          <a class="button-link" href="/archive/">Browse the DRX-90 archive</a>
+          <a class="button-link" href="/manuals/">Open software manuals</a>
+        </div>
+        <div class="review-grid" aria-label="Recovered reviews">
+          {reviewsContent.reviews.map((review) => (
+            <blockquote>
+              <p>“{review.excerpt}”</p>
+              <footer>{review.source} / {review.software} / {review.rating}</footer>
+            </blockquote>
+          ))}
+        </div>
+      </section>
+
+      <section id="accessibility" class="accessibility-section" aria-labelledby="accessibility-title">
+        <div class="section-heading">
+          <p class="eyebrow">Access profile</p>
+          <h2 id="accessibility-title">Critical state is never color alone</h2>
+        </div>
+        <p>
+          The website uses semantic HTML and visible keyboard focus. The browser
+          machine mirrors system navigation, settings, manuals, and dialogs for
+          assistive technology. Real-time cell games do not claim complete
+          screen-reader play in this preview.
+        </p>
+        <p>
+          High Contrast and color-safe palettes, reduced motion and flashing,
+          disabled shake, larger browser scaling, and disabled CRT effects
+          remain eligible for canonical score records. Audio is never required
+          to understand critical game state.
         </p>
       </section>
 
@@ -108,13 +196,10 @@ import "../styles/global.css";
         </p>
         <p>
           The native terminal application makes no outbound network requests.
+          Settings and high scores remain on the device. Diagnostics are created
+          only locally and voluntarily; Raster Nights never uploads them.
         </p>
       </section>
-    </main>
-
-    <footer>
-      <p>Raster Nights is an open-source software project by Drilon Reçica.</p>
-    </footer>
 
     <script is:inline type="module">
       const powerButton = document.querySelector("#power-button");
@@ -122,8 +207,9 @@ import "../styles/global.css";
       const status = document.querySelector("#machine-status");
       const errorPanel = document.querySelector("#machine-error");
       const semanticMirror = document.querySelector("#drx90-semantic");
+      const touchControls = document.querySelector("#touch-controls");
 
-      if (!powerButton || !display || !status || !errorPanel || !semanticMirror) {
+      if (!powerButton || !display || !status || !errorPanel || !semanticMirror || !touchControls) {
         throw new Error("DRX-90 host controls are missing");
       }
 
@@ -132,6 +218,7 @@ import "../styles/global.css";
         display.hidden = true;
         display.replaceChildren();
         semanticMirror.replaceChildren();
+        touchControls.hidden = true;
         status.textContent = "POWER: OFF";
         powerButton.textContent = "RESET DRX-90";
         powerButton.disabled = false;
@@ -163,6 +250,35 @@ import "../styles/global.css";
               wasm.semantic_activate(semanticId);
             }
           }, { once: false });
+          if (typeof wasm.touch_action === "function") {
+            touchControls.hidden = false;
+            for (const button of touchControls.querySelectorAll("[data-touch-action]")) {
+              const action = button.dataset.touchAction;
+              if (!action) {
+                continue;
+              }
+              const release = (event) => {
+                event.preventDefault();
+                if (!button.hasAttribute("data-pressed")) {
+                  return;
+                }
+                wasm.touch_action(action, "released");
+                button.removeAttribute("data-pressed");
+              };
+              button.addEventListener("pointerdown", (event) => {
+                event.preventDefault();
+                if (button.hasAttribute("data-pressed")) {
+                  return;
+                }
+                button.setPointerCapture(event.pointerId);
+                wasm.touch_action(action, "pressed");
+                button.setAttribute("data-pressed", "");
+              });
+              button.addEventListener("pointerup", release);
+              button.addEventListener("pointercancel", release);
+              button.addEventListener("lostpointercapture", release);
+            }
+          }
           display.hidden = false;
           display.focus();
           status.textContent = "INPUT LINK: ACTIVE";
@@ -178,5 +294,4 @@ import "../styles/global.css";
         }
       });
     </script>
-  </body>
-</html>
+</BaseLayout>

@@ -1,0 +1,55 @@
+---
+// SPDX-License-Identifier: MPL-2.0
+
+import manualsContent from "../../../../content/manuals.json";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+---
+
+<BaseLayout
+  title="Manuals — Raster Nights"
+  description="Controls, rules, scoring, accessibility, and archive notes for Raster Nights software."
+>
+  <section class="page-intro" aria-labelledby="manuals-title">
+    <p class="eyebrow">AfterHours manual archive / format {manualsContent.format_version}</p>
+    <h1 id="manuals-title">Software manuals</h1>
+    <p class="lede">
+      Instructions come first. Archive history follows after controls, rules,
+      scoring, and accessibility.
+    </p>
+  </section>
+
+  <nav class="section-index" aria-label="Manual index">
+    <h2>Index</h2>
+    <ul>
+      {manualsContent.manuals.map((manual) => (
+        <li><a href={`#${manual.id}`}>{manual.title} — {manual.subtitle}</a></li>
+      ))}
+    </ul>
+  </nav>
+
+  {manualsContent.manuals.map((manual) => (
+    <article id={manual.id} class="manual">
+      <header>
+        <p class="eyebrow">{manual.release_date} / {manual.fictional_version}</p>
+        <h2>{manual.title}</h2>
+        <p class="manual-subtitle">{manual.subtitle}</p>
+        <dl class="metadata">
+          <div><dt>Developer</dt><dd>{manual.developer}</dd></div>
+          <div><dt>Publisher</dt><dd>{manual.publisher}</dd></div>
+          {manual.catalog_number && (
+            <div><dt>Catalog</dt><dd>{manual.catalog_number}</dd></div>
+          )}
+        </dl>
+      </header>
+      <div class="manual-sections">
+        {manual.sections.map((section) => (
+          <section>
+            <h3>{section.heading}</h3>
+            {section.paragraphs.map((paragraph) => <p>{paragraph}</p>)}
+          </section>
+        ))}
+      </div>
+      <p><a href="#manuals-title">Return to manual index</a></p>
+    </article>
+  ))}
+</BaseLayout>

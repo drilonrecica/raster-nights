@@ -1,0 +1,51 @@
+{
+  "format_version": 1,
+  "rights": "reserved_creative_content",
+  "machine": {
+    "name": "DRX-90 Personal Multimedia System",
+    "manufacturer": "Reçica Computer Works",
+    "operating_system": "R/OS 3.11",
+    "overview": [
+      "The DRX-90 is a terminal-cell multimedia system designed for work, communications, and an unexpectedly durable after-hours software catalog.",
+      "Its complete logical display is 100 columns by 36 rows. AfterHours presents games, manuals, scores, studios, and release records through the same machine interface."
+    ],
+    "capabilities": [
+      "Terminal-cell vector display environment",
+      "R/OS operating environment",
+      "AfterHours Entertainment Archive",
+      "RCW V/A-16 Audio Array",
+      "Optional V-SCAPE perspective software"
+    ]
+  },
+  "manufacturer": {
+    "name": "Reçica Computer Works",
+    "abbreviation": "RCW",
+    "profile": [
+      "Reçica Computer Works designed the DRX-90, publishes selected software, and operates the AfterHours catalog and certification program.",
+      "RCW documentation is serious, technically ambitious, proud of compatibility, and occasionally unable to explain its own resident utilities."
+    ],
+    "brand_statement": "COMPATIBILITY IS A FEATURE. UNDOCUMENTED COMPATIBILITY IS ALSO A FEATURE."
+  },
+  "ros_help": {
+    "summary": "R/OS operates on a curated virtual filesystem. It does not expose files from the user's computer.",
+    "commands": [
+      { "command": "HELP", "description": "List available commands." },
+      { "command": "DIR", "description": "List the current virtual directory." },
+      { "command": "CD", "description": "Change virtual directory." },
+      { "command": "TYPE", "description": "Read a virtual text file." },
+      { "command": "CLS", "description": "Clear the command display." },
+      { "command": "DATE", "description": "Show the local system date." },
+      { "command": "TIME", "description": "Show the local system time." },
+      { "command": "VER", "description": "Show the R/OS presentation version." },
+      { "command": "MEM", "description": "Show memory diagnostics." },
+      { "command": "PLAY", "description": "Launch installed software." },
+      { "command": "GAMES", "description": "Open the AfterHours game list." },
+      { "command": "SCORES", "description": "Show local score records." },
+      { "command": "SET", "description": "Open system settings." },
+      { "command": "REBOOT", "description": "Restart the fictional machine." },
+      { "command": "SHUTDOWN", "description": "Shut down and restore the host." },
+      { "command": "EXIT", "description": "Leave the command prompt." },
+      { "command": "NUL", "description": "Request the resident utility layer." }
+    ]
+  }
+}

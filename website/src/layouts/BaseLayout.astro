@@ -1,0 +1,53 @@
+---
+// SPDX-License-Identifier: MPL-2.0
+
+import "../styles/global.css";
+
+interface Props {
+  title: string;
+  description: string;
+}
+
+const { title, description } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="description" content={description} />
+    <title>{title}</title>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="site-header">
+      <a class="wordmark" href="/">Raster Nights</a>
+      <nav aria-label="Primary navigation">
+        <a href="/#machine">Play</a>
+        <a href="/#catalog">Software</a>
+        <a href="/manuals/">Manuals</a>
+        <a href="/archive/">Archive</a>
+        <a href="/#install">Install</a>
+        <a href="/#privacy">Privacy</a>
+        <a href="https://github.com/drilonrecica/raster-nights">Source</a>
+      </nav>
+    </header>
+
+    <main id="main">
+      <slot />
+    </main>
+
+    <footer class="site-footer">
+      <p>Raster Nights is an open-source software project by Drilon Reçica.</p>
+      <p>
+        Software source is licensed under MPL-2.0. Fictional names, manuals,
+        archive writing, and other creative material are reserved unless stated
+        otherwise. See the
+        <a href="https://github.com/drilonrecica/raster-nights/blob/master/docs/LICENSING.md"
+          >licensing policy</a
+        >.
+      </p>
+    </footer>
+  </body>
+</html>

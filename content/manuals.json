@@ -1,0 +1,105 @@
+{
+  "format_version": 1,
+  "rights": "reserved_creative_content",
+  "manuals": [
+    {
+      "id": "signal-stack",
+      "title": "Signal Stack",
+      "subtitle": "High-Density Transmission Alignment System",
+      "release_date": "21.11.1995",
+      "fictional_version": "1.4",
+      "catalog_number": "SCW-AH-195",
+      "developer": "Frankenberg Logic Bureau",
+      "publisher": "Sara Circuitworks",
+      "sections": [
+        {
+          "heading": "Start",
+          "paragraphs": [
+            "Choose Signal Stack in AfterHours, review the controls, and start Standard Transmission. The matrix begins immediately after the loading sequence."
+          ]
+        },
+        {
+          "heading": "Controls",
+          "paragraphs": [
+            "Move packets with Left and Right. Down performs a soft drop; Space performs a hard drop. Up or X rotates clockwise, Z rotates counterclockwise, and C holds one packet per placement.",
+            "Escape pauses play. The controls screen always shows the bindings active on the current host."
+          ]
+        },
+        {
+          "heading": "Rules",
+          "paragraphs": [
+            "Arrange four-cell signal packets in the 10 by 20 visible matrix. Completed horizontal channels clear from the matrix. Five upcoming packets are shown, and the packet sequence uses a shuffled seven-packet bag.",
+            "Transmission rate advances primarily every ten cleared channels. A run ends when a new packet cannot enter or when occupied cells lock in the hidden region."
+          ]
+        },
+        {
+          "heading": "Scoring",
+          "paragraphs": [
+            "Channel clears, phase rotations, signal chains, sustained transmissions, soft drops, and hard drops contribute to the score. Clearing the complete matrix awards a zero-state bonus."
+          ]
+        },
+        {
+          "heading": "Accessibility",
+          "paragraphs": [
+            "Packet shapes and labels carry critical state in addition to color. High Contrast and color-safe palettes, reduced motion, reduced flashing, disabled shake, and disabled browser CRT effects do not make a score noncanonical."
+          ]
+        },
+        {
+          "heading": "Archive note",
+          "paragraphs": [
+            "Frankenberg Logic Bureau developed Signal Stack with technology from Vranidoll Signal Works. Sara Circuitworks published the commercial release."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "loopback",
+      "title": "Loopback",
+      "subtitle": "Quick Circuit cover-disk notes",
+      "release_date": "19.12.1993",
+      "fictional_version": "Quick Circuit revision 1",
+      "catalog_number": null,
+      "developer": "Noah Arc Labs",
+      "publisher": "Reçica Computer Works",
+      "sections": [
+        {
+          "heading": "Start",
+          "paragraphs": [
+            "Choose Loopback in AfterHours or launch Quick Circuit directly. The route begins moving to the right with three integrity points and a two-minute service window."
+          ]
+        },
+        {
+          "heading": "Controls",
+          "paragraphs": [
+            "Steer in four directions with the directional controls. A route cannot reverse directly into itself. Escape pauses play."
+          ]
+        },
+        {
+          "heading": "Rules",
+          "paragraphs": [
+            "Collect the active payload while avoiding walls and the existing route. Paired network ports move the route head to the matching port without changing its direction.",
+            "A collision removes one integrity point, resets the route, and grants a short visible recovery interval. The service timer continues. The run ends when integrity reaches zero or the timer expires."
+          ]
+        },
+        {
+          "heading": "Scoring",
+          "paragraphs": [
+            "Each payload is worth 100 points multiplied by the current port multiplier. Port traversal raises the next-payload multiplier up to four times; collecting a payload resets it. Completing the service window adds 500 points for each remaining integrity point."
+          ]
+        },
+        {
+          "heading": "Accessibility",
+          "paragraphs": [
+            "The route, payload, ports, hazards, recovery state, and integrity use distinct symbols and labels as well as color. Keyboard and hardware-styled touch controls enter the same game actions."
+          ]
+        },
+        {
+          "heading": "Archive note",
+          "paragraphs": [
+            "Noah Arc Labs began Loopback as a network-routing utility. Reçica Computer Works distributed it as fast bundled software for the DRX-90."
+          ]
+        }
+      ]
+    }
+  ]
+}

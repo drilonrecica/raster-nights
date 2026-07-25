@@ -1,0 +1,41 @@
+{
+  "format_version": 1,
+  "rights": "reserved_creative_content",
+  "name": "NUL",
+  "expansion": "Nonessential Utility Layer",
+  "official_description": "A low-priority resident process providing nonessential maintenance and interface assistance.",
+  "interactions": [
+    {
+      "id": "resident-process",
+      "context": "early-session diagnostic",
+      "lines": [
+        "UNACCOUNTED RESIDENT PROCESS ........ 1"
+      ]
+    },
+    {
+      "id": "management",
+      "context": "resident utility introduction",
+      "lines": [
+        "R/OS: NONESSENTIAL UTILITY LAYER LOADED.",
+        "NUL: \"NONESSENTIAL\" WAS ADDED BY MANAGEMENT."
+      ]
+    },
+    {
+      "id": "corruption-dispute",
+      "context": "recovered archive entry",
+      "lines": [
+        "NUL: THIS FILE IS NOT CORRUPTED.",
+        "R/OS: FILE STATUS: CORRUPTED.",
+        "NUL: WE DISAGREE."
+      ]
+    },
+    {
+      "id": "patience",
+      "context": "extended system operation",
+      "lines": [
+        "USER PATIENCE ........ UNVERIFIED",
+        "CONTINUING WITHOUT IT"
+      ]
+    }
+  ]
+}

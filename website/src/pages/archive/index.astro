@@ -1,0 +1,120 @@
+---
+// SPDX-License-Identifier: MPL-2.0
+
+import archiveContent from "../../../../content/archive.json";
+import filesystemContent from "../../../../content/filesystem.json";
+import nulContent from "../../../../content/nul.json";
+import reviewsContent from "../../../../content/reviews.json";
+import studiosContent from "../../../../content/studios.json";
+import systemContent from "../../../../content/system.json";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+---
+
+<BaseLayout
+  title="DRX-90 Archive — Raster Nights"
+  description="The curated DRX-90, R/OS, studio, software, and virtual-filesystem archive."
+>
+  <section class="page-intro" aria-labelledby="archive-title">
+    <p class="eyebrow">AfterHours archive / format {archiveContent.format_version}</p>
+    <h1 id="archive-title">DRX-90 archive</h1>
+    <p class="lede">{archiveContent.overview}</p>
+    <p class="catalog-note">
+      Fictional archive material is part of the curated Raster Nights setting.
+      The virtual filesystem shown here never reads the visitor’s files.
+    </p>
+  </section>
+
+  <section class="archive-section" aria-labelledby="system-title">
+    <p class="eyebrow">{systemContent.machine.operating_system}</p>
+    <h2 id="system-title">{systemContent.machine.name}</h2>
+    {systemContent.machine.overview.map((paragraph) => <p>{paragraph}</p>)}
+    <ul class="feature-list">
+      {systemContent.machine.capabilities.map((capability) => <li>{capability}</li>)}
+    </ul>
+    <h3>{systemContent.manufacturer.name}</h3>
+    {systemContent.manufacturer.profile.map((paragraph) => <p>{paragraph}</p>)}
+    <p class="system-statement">{systemContent.manufacturer.brand_statement}</p>
+  </section>
+
+  <section class="archive-section" aria-labelledby="timeline-title">
+    <p class="eyebrow">Certified software period</p>
+    <h2 id="timeline-title">Release chronology</h2>
+    <ol class="timeline">
+      {archiveContent.timeline.map((entry) => (
+        <li><time>{entry.date}</time><span>{entry.event}</span></li>
+      ))}
+    </ol>
+  </section>
+
+  <section class="archive-section" aria-labelledby="studios-title">
+    <p class="eyebrow">Selected profiles</p>
+    <h2 id="studios-title">Studios and publishers</h2>
+    <div class="card-grid">
+      {studiosContent.studios.map((studio) => (
+        <article class="archive-card">
+          <p class="card-meta">{studio.abbreviation}</p>
+          <h3>{studio.name}</h3>
+          <p>{studio.role}</p>
+          <p>{studio.character}</p>
+        </article>
+      ))}
+    </div>
+  </section>
+
+  <section class="archive-section" aria-labelledby="technology-title">
+    <p class="eyebrow">DRX-90 capabilities</p>
+    <h2 id="technology-title">System technologies</h2>
+    {archiveContent.technologies.map((technology) => (
+      <article class="technology">
+        <h3>{technology.name}</h3>
+        <p>{technology.summary}</p>
+        {"revisions" in technology && technology.revisions && (
+          <ul>{technology.revisions.map((revision) => <li>{revision}</li>)}</ul>
+        )}
+      </article>
+    ))}
+  </section>
+
+  <section class="archive-section" aria-labelledby="reviews-title">
+    <p class="eyebrow">Recovered media</p>
+    <h2 id="reviews-title">Reviews</h2>
+    <div class="review-grid">
+      {reviewsContent.reviews.map((review) => (
+        <blockquote>
+          <p>“{review.excerpt}”</p>
+          <footer>{review.source} / {review.software} / {review.rating}</footer>
+        </blockquote>
+      ))}
+    </div>
+  </section>
+
+  <section class="archive-section" aria-labelledby="filesystem-title">
+    <p class="eyebrow">Curated virtual media</p>
+    <h2 id="filesystem-title">R:\ filesystem index</h2>
+    <p>{filesystemContent.privacy_notice}</p>
+    <div class="table-scroll" tabindex="0" role="region" aria-label="Virtual filesystem entries">
+      <table>
+        <thead><tr><th>Path</th><th>Type</th><th>Description</th></tr></thead>
+        <tbody>
+          {filesystemContent.entries.map((entry) => (
+            <tr><td><code>{entry.path}</code></td><td>{entry.type}</td><td>{entry.summary}</td></tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="archive-section" aria-labelledby="nul-title">
+    <p class="eyebrow">Resident process</p>
+    <h2 id="nul-title">{nulContent.name} — {nulContent.expansion}</h2>
+    <p>{nulContent.official_description}</p>
+    <div class="nul-log">
+      {nulContent.interactions.map((interaction) => (
+        <article>
+          <h3>{interaction.context}</h3>
+          <pre>{interaction.lines.join("\n")}</pre>
+        </article>
+      ))}
+    </div>
+  </section>
+</BaseLayout>
