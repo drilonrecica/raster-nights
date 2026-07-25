@@ -52,7 +52,7 @@ pub enum AppStateKind {
     FatalError,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Debug)]
 pub(crate) enum AppState {
     PrivacyNotice,
     ColdBoot(BootState),
@@ -64,6 +64,7 @@ pub(crate) enum AppState {
     ResizeSuspended(ResizeSuspendedState),
     Shutdown(ShutdownState),
     FatalError(String),
+    Transitioning,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -82,7 +83,7 @@ pub(crate) enum SystemMenuItem {
     Shutdown,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Debug)]
 pub(crate) struct ResizeSuspendedState {
     pub(crate) previous: Box<AppState>,
     pub(crate) columns: u16,
@@ -134,7 +135,7 @@ impl Application {
     }
 
     #[must_use]
-    pub const fn state_kind(&self) -> AppStateKind {
+    pub fn state_kind(&self) -> AppStateKind {
         match self.state {
             AppState::PrivacyNotice => AppStateKind::PrivacyNotice,
             AppState::ColdBoot(_) => AppStateKind::ColdBoot,
@@ -146,6 +147,9 @@ impl Application {
             AppState::ResizeSuspended(_) => AppStateKind::ResizeSuspended,
             AppState::Shutdown(_) => AppStateKind::Shutdown,
             AppState::FatalError(_) => AppStateKind::FatalError,
+            AppState::Transitioning => {
+                unreachable!("transition sentinel is never externally observable")
+            }
         }
     }
 
@@ -171,6 +175,32 @@ impl Application {
 
         if action == AppAction::Interrupt {
             self.handle_interrupt();
+            return;
+        }
+
+        if action == AppAction::Back && matches!(self.state, AppState::InterruptConfirm(_)) {
+            let previous = match self.take_state() {
+                AppState::InterruptConfirm(previous) => *previous,
+                _ => unreachable!("state checked before extraction"),
+            };
+            self.transition(previous);
+            return;
+        }
+
+        if action == AppAction::Confirm
+            && matches!(
+                self.state,
+                AppState::ResizeSuspended(ResizeSuspendedState {
+                    ready_to_resume: true,
+                    ..
+                })
+            )
+        {
+            let previous = match self.take_state() {
+                AppState::ResizeSuspended(resize) => *resize.previous,
+                _ => unreachable!("state checked before extraction"),
+            };
+            self.transition(previous);
             return;
         }
 
@@ -206,25 +236,20 @@ impl Application {
                 AppAction::Back => self.transition(AppState::Launcher),
                 _ => {}
             },
-            AppState::InterruptConfirm(previous) => match action {
+            AppState::InterruptConfirm(_) => match action {
                 AppAction::Confirm => self.begin_shutdown(false),
-                AppAction::Back => {
-                    let previous = *previous.clone();
-                    self.transition(previous);
-                }
+                AppAction::Back => unreachable!("handled before borrowing state"),
                 _ => {}
             },
-            AppState::ResizeSuspended(resize) => {
-                if resize.ready_to_resume && action == AppAction::Confirm {
-                    let previous = *resize.previous.clone();
-                    self.transition(previous);
-                }
-            }
+            AppState::ResizeSuspended(_) => {}
             AppState::Shutdown(_) => {
                 self.exit_requested = true;
             }
             AppState::FatalError(_) if matches!(action, AppAction::Confirm | AppAction::Back) => {
                 self.begin_shutdown(true);
+            }
+            AppState::Transitioning => {
+                unreachable!("transition sentinel is never externally observable")
             }
             _ => {}
         }
@@ -249,7 +274,7 @@ impl Application {
             return;
         }
 
-        let previous = Box::new(self.state.clone());
+        let previous = Box::new(self.take_state());
         self.transition(AppState::ResizeSuspended(ResizeSuspendedState {
             previous,
             columns,
@@ -390,6 +415,9 @@ impl Application {
                 "Fatal application error",
                 vec![status("fatal.message", message)],
             ),
+            AppState::Transitioning => {
+                unreachable!("transition sentinel is never externally observable")
+            }
         };
 
         SemanticUiTree {
@@ -425,7 +453,7 @@ impl Application {
                 self.begin_shutdown(true);
             }
             _ => {
-                let previous = Box::new(self.state.clone());
+                let previous = Box::new(self.take_state());
                 self.transition(AppState::InterruptConfirm(previous));
             }
         }
@@ -444,6 +472,10 @@ impl Application {
     fn transition(&mut self, next: AppState) {
         self.state = next;
         self.bump_revision();
+    }
+
+    fn take_state(&mut self) -> AppState {
+        std::mem::replace(&mut self.state, AppState::Transitioning)
     }
 
     fn bump_revision(&mut self) {

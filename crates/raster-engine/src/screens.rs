@@ -30,6 +30,9 @@ pub(crate) fn render(app: &Application, display: &mut dyn Display) -> Result<(),
         }
         AppState::Shutdown(shutdown) => render_shutdown(display, shutdown.elapsed_ticks)?,
         AppState::FatalError(message) => render_fatal(display, message)?,
+        AppState::Transitioning => {
+            unreachable!("transition sentinel is never externally observable")
+        }
     }
     Ok(())
 }

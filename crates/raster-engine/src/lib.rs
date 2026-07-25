@@ -5,6 +5,7 @@
 mod app;
 mod clock;
 mod domain;
+mod game;
 mod input;
 mod input_system;
 mod persistence;
@@ -17,6 +18,7 @@ pub use domain::{
     GameId, GameOutcome, GameResult, GameStatus, IdentifierError, ModeId, RulesRevision, RunSeed,
     SimulationStep, SimulationTick, StateHash, ThreeCharacterTag,
 };
+pub use game::{Game, GameDescriptor, GameError, GameRegistry, ModeDescriptor, NewRunRequest};
 pub use input::{
     AppAction, DeviceInput, GameAction, InputCapability, InputContext, KeyCode, KeyModifiers,
     PhysicalKey, PointerButton, TextEscapeBehavior,
