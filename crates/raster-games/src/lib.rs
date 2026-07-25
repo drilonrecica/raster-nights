@@ -2,6 +2,7 @@
 
 //! Official game implementations and their explicit registry.
 
+pub mod loopback;
 mod registry;
 pub mod signal_stack;
 
