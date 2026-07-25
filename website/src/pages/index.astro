@@ -1,0 +1,144 @@
+---
+// SPDX-License-Identifier: MPL-2.0
+
+import "../styles/global.css";
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <meta
+      name="description"
+      content="Raster Nights is a curated retro game system for the fictional DRX-90 home computer."
+    />
+    <title>Raster Nights — DRX-90 Software Archive</title>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="site-header">
+      <a class="wordmark" href="/">Raster Nights</a>
+      <nav aria-label="Primary navigation">
+        <a href="#machine">DRX-90</a>
+        <a href="#catalog">Software</a>
+        <a href="#privacy">Privacy</a>
+        <a href="https://github.com/drilonrecica/raster-nights">Source</a>
+      </nav>
+    </header>
+
+    <main id="main">
+      <section class="hero" aria-labelledby="hero-title">
+        <p class="eyebrow">Reçica Computer Works archive terminal</p>
+        <h1 id="hero-title">Substantial games for a computer that never existed.</h1>
+        <p class="lede">
+          Raster Nights runs the same deterministic Rust games in a normal
+          terminal and inside the browser-mounted DRX-90.
+        </p>
+        <p class="development-status">
+          Development build. Public installation packages are not available yet.
+        </p>
+      </section>
+
+      <section id="machine" class="machine-section" aria-labelledby="machine-title">
+        <div class="section-heading">
+          <p class="eyebrow">DRX-90 / R/OS</p>
+          <h2 id="machine-title">Browser diagnostic</h2>
+        </div>
+
+        <div class="machine">
+          <div class="machine-bezel">
+            <div
+              id="drx90-display"
+              class="display-mount"
+              tabindex="-1"
+              aria-label="DRX-90 terminal display"
+              hidden
+            >
+            </div>
+            <div id="machine-error" class="machine-error" role="alert" hidden></div>
+          </div>
+          <div class="machine-controls">
+            <button id="power-button" class="power-button" type="button">
+              POWER ON DRX-90
+            </button>
+            <p id="machine-status" class="machine-status" role="status" aria-live="polite">
+              POWER: STANDBY
+            </p>
+          </div>
+        </div>
+        <p class="orientation-note">
+          Real-time games will require landscape orientation. System pages remain
+          available in portrait.
+        </p>
+      </section>
+
+      <section id="catalog" class="catalog-section" aria-labelledby="catalog-title">
+        <div class="section-heading">
+          <p class="eyebrow">AfterHours featured software</p>
+          <h2 id="catalog-title">Signal Stack</h2>
+        </div>
+        <p>
+          Route falling data packets through a saturated switching matrix. The
+          first playable build will provide Standard Transmission with identical
+          rules in the terminal and browser.
+        </p>
+        <p class="catalog-note">Catalog status: implementation in progress.</p>
+      </section>
+
+      <section id="privacy" class="privacy-section" aria-labelledby="privacy-title">
+        <div class="section-heading">
+          <p class="eyebrow">Local system policy</p>
+          <h2 id="privacy-title">No application services</h2>
+        </div>
+        <p>
+          The browser loads the bundled page, JavaScript, WebAssembly, fonts, and
+          assets from this site. After loading, gameplay does not send telemetry,
+          scores, diagnostics, updates, or remote-content requests.
+        </p>
+        <p>
+          The native terminal application makes no outbound network requests.
+        </p>
+      </section>
+    </main>
+
+    <footer>
+      <p>Raster Nights is an open-source software project by Drilon Reçica.</p>
+    </footer>
+
+    <script>
+      const powerButton = document.querySelector<HTMLButtonElement>("#power-button");
+      const display = document.querySelector<HTMLElement>("#drx90-display");
+      const status = document.querySelector<HTMLElement>("#machine-status");
+      const errorPanel = document.querySelector<HTMLElement>("#machine-error");
+
+      if (!powerButton || !display || !status || !errorPanel) {
+        throw new Error("DRX-90 host controls are missing");
+      }
+
+      powerButton.addEventListener("click", async () => {
+        powerButton.disabled = true;
+        errorPanel.hidden = true;
+        status.textContent = "POWER: LOADING LOCAL SYSTEM";
+
+        try {
+          const modulePath = "/wasm/raster_web.js";
+          const wasm = await import(/* @vite-ignore */ modulePath);
+          await wasm.default();
+          wasm.start();
+          display.hidden = false;
+          display.focus();
+          status.textContent = "INPUT LINK: ACTIVE";
+          powerButton.hidden = true;
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          errorPanel.textContent = `DRX-90 STARTUP FAILED: ${message}`;
+          errorPanel.hidden = false;
+          status.textContent = "POWER: FAULT";
+          powerButton.textContent = "RETRY POWER ON";
+          powerButton.disabled = false;
+        }
+      });
+    </script>
+  </body>
+</html>
