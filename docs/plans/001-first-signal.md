@@ -1,6 +1,6 @@
 # Plan 001 — First Signal
 
-**Status:** Proposed  
+**Status:** Active  
 **Target milestone:** Milestone 0 — First Signal  
 **Owner:** Drilon Reçica  
 **Primary game:** Signal Stack  
