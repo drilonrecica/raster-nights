@@ -1,6 +1,6 @@
 # Plan 002 — System Preview
 
-**Status:** Active  
+**Status:** Completed (local release candidate)  
 **Target milestone:** 0.1 system preview  
 **Owner:** Drilon Reçica  
 **Hosts:** Native terminal and browser
@@ -59,63 +59,63 @@ exists; unavailable external environments are recorded honestly.
       catalog number, controls, modes, and advertised/hidden visibility.
 - [x] Expose advertised and hidden registrations separately.
 - [x] Fail startup and `validate-content` clearly for invalid bundled content.
-- [ ] Add stable game-result discovery markers.
+- [x] Add stable game-result discovery markers.
 - [x] Migrate system state v1 to v2 while preserving valid v1 files and
       existing privacy, selection, mode, and tag values.
 - [x] Persist Packet Sweep trace-revealed and unlocked state.
 - [x] Add R/OS Standard, Amber, Green, Midnight VGA, High Contrast, and Paper
       palette conversion in both hosts.
-- [ ] Complete settings for palette, reduced motion, quiet operation, and
+- [x] Complete settings for palette, reduced motion, quiet operation, and
       browser CRT effects that actually exist.
-- [ ] Add validated Wasm `touch_action(action, phase)` input using the same
+- [x] Add validated Wasm `touch_action(action, phase)` input using the same
       normalized action path as keyboard input.
-- [ ] Add manual index/detail app states and semantic nodes.
-- [ ] Make manuals and website pages consume the same versioned content.
+- [x] Add manual index/detail app states and semantic nodes.
+- [x] Make manuals and website pages consume the same versioned content.
 
 ## Loopback — Quick Circuit revision 1
 
-- [ ] Implement a deterministic 24×20 logical arena rendered double-width.
-- [ ] Run for 7,200 ticks with three integrity points and a four-segment route
+- [x] Implement a deterministic 24×20 logical arena rendered double-width.
+- [x] Run for 7,200 ticks with three integrity points and a four-segment route
       initially moving right.
-- [ ] Reject direct reversal.
-- [ ] Spawn one deterministic payload at a time.
-- [ ] Implement two paired port sets that preserve heading.
-- [ ] Increase the next-payload multiplier on port traversal to a maximum of
+- [x] Reject direct reversal.
+- [x] Spawn one deterministic payload at a time.
+- [x] Implement two paired port sets that preserve heading.
+- [x] Increase the next-payload multiplier on port traversal to a maximum of
       four and reset it on collection.
-- [ ] Score payloads at `100 × multiplier`.
-- [ ] Award `500 × remaining integrity` on timed completion.
-- [ ] Increase speed at 8, 16, 24, and 32 payloads from 12 to 6 ticks per move.
-- [ ] On wall/self collision, remove integrity, reset multiplier and route, and
+- [x] Score payloads at `100 × multiplier`.
+- [x] Award `500 × remaining integrity` on timed completion.
+- [x] Increase speed at 8, 16, 24, and 32 payloads from 12 to 6 ticks per move.
+- [x] On wall/self collision, remove integrity, reset multiplier and route, and
       grant 60 ticks of visible recovery protection while the timer continues.
-- [ ] End on zero integrity; complete on timer expiry.
-- [ ] Add pause/restart, records, controls, semantic status, deterministic hash,
+- [x] End on zero integrity; complete on timer expiry.
+- [x] Add pause/restart, records, controls, semantic status, deterministic hash,
       native/Wasm golden run, rule tests, and structured rendering snapshots.
-- [ ] Keep Open Loop deferred.
+- [x] Keep Open Loop deferred.
 
 ## Packet Sweep revision 1
 
-- [ ] Implement one fixed 24×18 logical arena.
-- [ ] Run for 5,400 ticks with three integrity points.
-- [ ] Collect one valid packet at a time with a four-way maintenance cursor.
-- [ ] Start with three deterministic moving checksum errors.
-- [ ] Add one error every 15 packets to a maximum of eight.
-- [ ] Use seeded headings and deterministic wall reflection.
-- [ ] Score valid packets at `100 + 25 × min(current streak, 20)`.
-- [ ] On collision, remove integrity, reset streak, return to center, and grant
+- [x] Implement one fixed 24×18 logical arena.
+- [x] Run for 5,400 ticks with three integrity points.
+- [x] Collect one valid packet at a time with a four-way maintenance cursor.
+- [x] Start with three deterministic moving checksum errors.
+- [x] Add one error every 15 packets to a maximum of eight.
+- [x] Use seeded headings and deterministic wall reflection.
+- [x] Score valid packets at `100 + 25 × min(current streak, 20)`.
+- [x] On collision, remove integrity, reset streak, return to center, and grant
       60 ticks of visible protection.
-- [ ] End on zero integrity; complete on timer expiry.
-- [ ] Add its own registration, rules revision, records, deterministic golden
+- [x] End on zero integrity; complete on timer expiry.
+- [x] Add its own registration, rules revision, records, deterministic golden
       run, and structured rendering snapshots.
-- [ ] Keep Packet Sweep absent from ordinary catalog and website game listings.
+- [x] Keep Packet Sweep absent from ordinary catalog and website game listings.
 
 ## Discovery flow
 
-- [ ] Record a trace discovery after a Signal Stack zero-state clear at
+- [x] Record a trace discovery after a Signal Stack zero-state clear at
       transmission rate 5 or above.
-- [ ] Reveal `TRACE90` in post-run diagnostics.
-- [ ] Expose an accessible trace-entry action from Signal Stack details.
-- [ ] Persist unlock and launch Packet Sweep after entering `TRACE90`.
-- [ ] Replace trace entry with trace recall after unlock.
+- [x] Reveal `TRACE90` in post-run diagnostics.
+- [x] Expose an accessible trace-entry action from Signal Stack details.
+- [x] Persist unlock and launch Packet Sweep after entering `TRACE90`.
+- [x] Replace trace entry with trace recall after unlock.
 
 ## System, content, and website
 
@@ -125,48 +125,48 @@ exists; unavailable external environments are recorded honestly.
       local SSH service was active on 26.07.2026.
 - [x] Add sanitized diagnostics without usernames, full paths, environment
       values, network activity, or automatic upload.
-- [ ] Add versioned catalog, manual, and archive content for the DRX-90/R/OS,
+- [x] Add versioned catalog, manual, and archive content for the DRX-90/R/OS,
       Reçica Computer Works, Signal Stack, Loopback cover-disk notes, existing
       canonical studios, two restrained reviews, curated filesystem entries,
       and several NUL interactions.
-- [ ] Draft copy strictly from existing canon; add no companies, dates,
+- [x] Draft copy strictly from existing canon; add no companies, dates,
       personal details, or major lore.
-- [ ] Expand the Astro site with manuals/archive pages, touch controls, current
+- [x] Expand the Astro site with manuals/archive pages, touch controls, current
       installation guidance, accessibility behavior, and accurate status.
-- [ ] Keep audio, Open Loop, advanced remapping, elaborate CRT effects, and
+- [x] Keep audio, Open Loop, advanced remapping, elaborate CRT effects, and
       additional Signal Stack modes deferred.
 
 ## Release candidate
 
-- [ ] Add deterministic packaging for Linux x86-64, macOS Intel, macOS Apple
+- [x] Add deterministic packaging for Linux x86-64, macOS Intel, macOS Apple
       Silicon, browser bundle, and SHA-256 checksums.
-- [ ] Include license and notice files in every archive.
-- [ ] Add tag-triggered CI using `ubuntu-24.04`, `macos-15-intel`, and
+- [x] Include license and notice files in every archive.
+- [x] Add tag-triggered CI using `ubuntu-24.04`, `macos-15-intel`, and
       `macos-15`.
-- [ ] Upload workflow artifacts without publishing a release or deploying.
-- [ ] Add a Homebrew formula template and generator consuming archive URLs and
+- [x] Upload workflow artifacts without publishing a release or deploying.
+- [x] Add a Homebrew formula template and generator consuming archive URLs and
       SHA-256 values.
-- [ ] Add `CHANGELOG.md`, release notes, asset/license manifests, trademark
+- [x] Add `CHANGELOG.md`, release notes, asset/license manifests, trademark
       policy, and documentation licensing mappings.
-- [ ] Create annotated local `v0.1.0-rc.1` only after every available gate
+- [x] Create annotated local `v0.1.0-rc.1` only after every available gate
       passes and the worktree is clean.
-- [ ] Leave final `v0.1.0` blocked on macOS runtime verification and explicit
+- [x] Leave final `v0.1.0` blocked on macOS runtime verification and explicit
       owner release acceptance.
 
 ## Acceptance
 
-- [ ] Unit tests cover both new games, CLI parsing, content validation, state
+- [x] Unit tests cover both new games, CLI parsing, content validation, state
       migration/recovery, palettes, and touch press/release behavior.
-- [ ] Native and Firefox-headless Wasm golden runs pass for Signal Stack,
+- [x] Native and Firefox-headless Wasm golden runs pass for Signal Stack,
       Loopback, and Packet Sweep.
-- [ ] Structured snapshots cover the specified game and system states.
-- [ ] Host integration covers direct/quick/quiet launch, diagnostics, content
+- [x] Structured snapshots cover the specified game and system states.
+- [x] Host integration covers direct/quick/quiet launch, diagnostics, content
       validation, browser lifecycle/touch, and terminal cleanup/resize/tmux.
-- [ ] `./scripts/check.sh` passes.
-- [ ] Package extraction, binary smoke tests, website production build, archive
+- [x] `./scripts/check.sh` passes.
+- [x] Package extraction, binary smoke tests, website production build, archive
       manifests, and checksum verification pass.
-- [ ] Browser runtime initiates no non-bundled requests after loading.
-- [ ] Known unavailable external runtime checks are recorded and not marked
+- [x] Browser runtime initiates no non-bundled requests after loading.
+- [x] Known unavailable external runtime checks are recorded and not marked
       complete.
 
 ## Deliberately deferred
@@ -178,3 +178,13 @@ exists; unavailable external environments are recorded honestly.
 - Additional Signal Stack modes
 - Public release publication or deployment
 - Final `v0.1.0` tag
+
+## Completion record
+
+Completed locally on 26.07.2026. `./scripts/check.sh` passed, including strict
+clippy, native tests, all three Firefox-headless Wasm golden runs, bundled
+content validation, and the Astro production build. Current Linux and browser
+archives were extracted and smoke-tested, and their SHA-256 checksums verified.
+macOS archives are prepared by tag-triggered CI; runtime acceptance on Intel
+and Apple Silicon macOS remains external and is required before final
+`v0.1.0` owner acceptance.
