@@ -18,6 +18,7 @@ pub(crate) fn render(app: &Application, display: &mut dyn Display) -> Result<(),
     display.clear(style(SemanticColor::Text));
     match app.state() {
         AppState::PrivacyNotice => render_privacy(display, app.host())?,
+        AppState::PrivacyReview => render_privacy_review(display, app.host())?,
         AppState::ColdBoot(boot) => {
             render_boot(display, app.date(), boot.elapsed_ticks, false)?;
         }
@@ -57,6 +58,20 @@ pub(crate) fn render(app: &Application, display: &mut dyn Display) -> Result<(),
 }
 
 fn render_privacy(display: &mut dyn Display, host: HostKind) -> Result<(), GlyphError> {
+    render_privacy_copy(display, host)?;
+    emphasized(display, 37, 24, "[ ENTER ] CONTINUE")?;
+    status_line(display, "ENTER Continue")?;
+    Ok(())
+}
+
+fn render_privacy_review(display: &mut dyn Display, host: HostKind) -> Result<(), GlyphError> {
+    render_privacy_copy(display, host)?;
+    emphasized(display, 31, 24, "[ ENTER ] RETURN TO AFTERHOURS")?;
+    status_line(display, "ENTER or ESC Return")?;
+    Ok(())
+}
+
+fn render_privacy_copy(display: &mut dyn Display, host: HostKind) -> Result<(), GlyphError> {
     frame(display, "LOCAL SYSTEM NOTICE")?;
     panel(
         display,
@@ -99,8 +114,6 @@ fn render_privacy(display: &mut dyn Display, host: HostKind) -> Result<(), Glyph
             )?;
         }
     }
-    emphasized(display, 37, 24, "[ ENTER ] CONTINUE")?;
-    status_line(display, "ENTER Continue")?;
     Ok(())
 }
 
@@ -463,10 +476,17 @@ fn render_system_menu(
         display,
         36,
         17,
+        "LOCAL SYSTEM NOTICE",
+        selected_item == SystemMenuItem::Privacy,
+    )?;
+    menu_item(
+        display,
+        36,
+        19,
         "SHUT DOWN",
         selected_item == SystemMenuItem::Shutdown,
     )?;
-    muted(display, 34, 22, "UP/DOWN Select   ENTER Confirm")?;
+    muted(display, 34, 23, "UP/DOWN Select   ENTER Confirm")?;
     status_line(display, "ESC Return")?;
     Ok(())
 }

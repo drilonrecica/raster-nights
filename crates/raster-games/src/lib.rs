@@ -9,9 +9,11 @@ pub use registry::RasterGameRegistry;
 
 #[cfg(all(test, target_arch = "wasm32"))]
 mod wasm_tests {
+    use crate::signal_stack::SignalStack;
     use raster_display::{DISPLAY_HEIGHT, DISPLAY_WIDTH, DisplayBuffer, render_diagnostic_grid};
     use raster_engine::{
-        ActionPhase, AppAction, AppStateKind, Application, CalendarDate, HostKind,
+        ActionPhase, AppAction, AppStateKind, Application, CalendarDate, GameAction, HostKind,
+        RunSeed, SimulationStep, SimulationTick, StateHash,
     };
     use wasm_bindgen_test::{wasm_bindgen_test, wasm_bindgen_test_configure};
 
@@ -40,5 +42,30 @@ mod wasm_tests {
 
         assert_eq!(app.state_kind(), AppStateKind::Launcher);
         assert!(display.snapshot().character_grid().contains("SIGNAL STACK"));
+    }
+
+    #[wasm_bindgen_test]
+    fn signal_stack_golden_run_matches_native_expectation() {
+        let mut game = SignalStack::new(RunSeed(0xCAFE_BABE));
+        for tick in 1..=180 {
+            let actions: &[GameAction] = match tick {
+                3 | 5 | 7 => &[GameAction::MoveLeft],
+                11 => &[GameAction::RotateClockwise],
+                15 => &[GameAction::Hold],
+                24 | 48 | 72 => &[GameAction::SoftDrop],
+                90 => &[GameAction::HardDrop],
+                100 => &[GameAction::MoveRight, GameAction::RotateCounterclockwise],
+                150 => &[GameAction::HardDrop],
+                _ => &[],
+            };
+            for action in actions {
+                game.handle_action(*action);
+            }
+            game.update(SimulationStep {
+                tick: SimulationTick(tick),
+            });
+        }
+
+        assert_eq!(game.state_hash(), StateHash(17_381_950_295_200_256_755));
     }
 }

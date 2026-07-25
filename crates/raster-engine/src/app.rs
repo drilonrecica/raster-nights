@@ -66,6 +66,7 @@ pub enum AppStateKind {
 #[derive(Debug)]
 pub(crate) enum AppState {
     PrivacyNotice,
+    PrivacyReview,
     ColdBoot(BootState),
     WarmBoot(BootState),
     Launcher,
@@ -179,6 +180,7 @@ pub(crate) struct SystemMenuState {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum SystemMenuItem {
     Return,
+    Privacy,
     Shutdown,
 }
 
@@ -284,6 +286,7 @@ impl Application {
     pub fn state_kind(&self) -> AppStateKind {
         match self.state {
             AppState::PrivacyNotice => AppStateKind::PrivacyNotice,
+            AppState::PrivacyReview => AppStateKind::PrivacyNotice,
             AppState::ColdBoot(_) => AppStateKind::ColdBoot,
             AppState::WarmBoot(_) => AppStateKind::WarmBoot,
             AppState::Launcher => AppStateKind::Launcher,
@@ -408,6 +411,9 @@ impl Application {
                 self.acknowledge_privacy();
                 self.transition(AppState::ColdBoot(BootState { elapsed_ticks: 0 }));
             }
+            AppState::PrivacyReview if matches!(action, AppAction::Confirm | AppAction::Back) => {
+                self.transition(AppState::Launcher);
+            }
             AppState::ColdBoot(_) | AppState::WarmBoot(_) => {
                 self.transition(AppState::Launcher);
             }
@@ -425,14 +431,21 @@ impl Application {
             },
             AppState::SystemMenu(menu) => match action {
                 AppAction::NavigateUp | AppAction::NavigateDown => {
-                    menu.selected = match menu.selected {
-                        SystemMenuItem::Return => SystemMenuItem::Shutdown,
-                        SystemMenuItem::Shutdown => SystemMenuItem::Return,
+                    menu.selected = match (menu.selected, action) {
+                        (SystemMenuItem::Return, AppAction::NavigateUp) => SystemMenuItem::Shutdown,
+                        (SystemMenuItem::Return, _) => SystemMenuItem::Privacy,
+                        (SystemMenuItem::Privacy, AppAction::NavigateUp) => SystemMenuItem::Return,
+                        (SystemMenuItem::Privacy, _) => SystemMenuItem::Shutdown,
+                        (SystemMenuItem::Shutdown, AppAction::NavigateUp) => {
+                            SystemMenuItem::Privacy
+                        }
+                        (SystemMenuItem::Shutdown, _) => SystemMenuItem::Return,
                     };
                     self.bump_revision();
                 }
                 AppAction::Confirm => match menu.selected {
                     SystemMenuItem::Return => self.transition(AppState::Launcher),
+                    SystemMenuItem::Privacy => self.transition(AppState::PrivacyReview),
                     SystemMenuItem::Shutdown => self.begin_shutdown(false),
                 },
                 AppAction::Back => self.transition(AppState::Launcher),
@@ -508,11 +521,11 @@ impl Application {
             AppState::Launcher if (7..=9).contains(&row) && (3..=68).contains(&column) => {
                 self.transition(AppState::SoftwareDetails);
             }
-            AppState::SystemMenu(menu) if (14..=17).contains(&row) => {
-                menu.selected = if row <= 15 {
-                    SystemMenuItem::Return
-                } else {
-                    SystemMenuItem::Shutdown
+            AppState::SystemMenu(menu) if (14..=20).contains(&row) => {
+                menu.selected = match row {
+                    14..=16 => SystemMenuItem::Return,
+                    17..=18 => SystemMenuItem::Privacy,
+                    _ => SystemMenuItem::Shutdown,
                 };
                 self.bump_revision();
             }
@@ -528,7 +541,9 @@ impl Application {
             "details.return" => {
                 self.handle_action(AppAction::Back, ActionPhase::Pressed);
             }
+            "privacy.return" => self.transition(AppState::Launcher),
             "system.return" => self.transition(AppState::Launcher),
+            "system.privacy" => self.transition(AppState::PrivacyReview),
             "system.shutdown" | "interrupt.confirm" => self.begin_shutdown(false),
             "pause.resume" => {
                 if let AppState::Paused(pause) = &mut self.state {
@@ -646,6 +661,10 @@ impl Application {
                 "Local system notice",
                 vec![button("privacy.continue", "Continue", true)],
             ),
+            AppState::PrivacyReview => (
+                "Local system notice",
+                vec![button("privacy.return", "Return to AfterHours", true)],
+            ),
             AppState::ColdBoot(_) | AppState::WarmBoot(_) => (
                 "DRX-90 system boot",
                 vec![status("boot.status", "System diagnostics in progress")],
@@ -738,6 +757,11 @@ impl Application {
                         "system.return",
                         "Return to AfterHours",
                         menu.selected == SystemMenuItem::Return,
+                    ),
+                    button(
+                        "system.privacy",
+                        "Local system notice",
+                        menu.selected == SystemMenuItem::Privacy,
                     ),
                     button(
                         "system.shutdown",
