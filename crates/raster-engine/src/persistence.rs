@@ -277,6 +277,17 @@ pub trait SystemStateRepository {
     fn save_system_state(&mut self, state: &SystemState) -> Result<(), PersistenceError>;
 }
 
+/// Complete persistence surface injected by a host composition root.
+pub trait ApplicationRepository:
+    SettingsRepository + ScoreRepository + SystemStateRepository + fmt::Debug
+{
+}
+
+impl<T> ApplicationRepository for T where
+    T: SettingsRepository + ScoreRepository + SystemStateRepository + fmt::Debug
+{
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

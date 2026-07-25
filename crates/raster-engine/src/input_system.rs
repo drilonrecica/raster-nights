@@ -288,6 +288,10 @@ pub fn map_key_to_action(key: PhysicalKey, context: InputContext) -> Option<AppA
             _ => None,
         },
         InputContext::TextEntry(escape_behavior) => match key.code {
+            KeyCode::ArrowLeft => Some(AppAction::NavigateLeft),
+            KeyCode::ArrowRight => Some(AppAction::NavigateRight),
+            KeyCode::ArrowUp => Some(AppAction::NavigateUp),
+            KeyCode::ArrowDown => Some(AppAction::NavigateDown),
             KeyCode::Escape => Some(match escape_behavior {
                 TextEscapeBehavior::Clear => AppAction::ClearText,
                 TextEscapeBehavior::Back => AppAction::Back,

@@ -54,6 +54,15 @@ pub trait GameRegistry: Debug {
     fn create(&self, game_id: &GameId) -> Result<Box<dyn Game>, GameError>;
 }
 
+/// Host-provided nondeterministic metadata used only to begin and record runs.
+///
+/// Games receive the resulting seed and timestamp as ordinary values and never
+/// access a platform clock or entropy source directly.
+pub trait RunMetadataSource: Debug {
+    fn next_seed(&mut self) -> RunSeed;
+    fn unix_seconds(&self) -> i64;
+}
+
 #[derive(Clone, Debug, Eq, Error, PartialEq)]
 pub enum GameError {
     #[error("game {0} is not registered")]

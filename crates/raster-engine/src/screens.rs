@@ -6,7 +6,10 @@ use raster_display::{
 
 use crate::{
     Application, CalendarDate, HostKind,
-    app::{AppState, SystemMenuItem},
+    app::{
+        AppState, GameOverItem, GameOverState, PauseMenuItem, PauseReason, PauseState,
+        SystemMenuItem, TagEntryState,
+    },
 };
 
 const SCREEN: GridRect = GridRect::new(0, 0, 100, 36);
@@ -21,8 +24,24 @@ pub(crate) fn render(app: &Application, display: &mut dyn Display) -> Result<(),
         AppState::WarmBoot(boot) => {
             render_boot(display, app.date(), boot.elapsed_ticks, true)?;
         }
-        AppState::Launcher => render_launcher(display)?,
+        AppState::Launcher => render_launcher(display, app.persistence_warning())?,
         AppState::SoftwareDetails => render_details(display)?,
+        AppState::Loading(_) => render_loading(display)?,
+        AppState::Playing(session) => session.game.render(display)?,
+        AppState::Paused(pause) => {
+            pause.session.game.render(display)?;
+            render_pause(display, pause)?;
+        }
+        AppState::Controls(_) => render_controls(display)?,
+        AppState::Settings(_) => render_settings(display, app.reduced_motion())?,
+        AppState::GameOver(game_over) => render_game_over(display, game_over)?,
+        AppState::TagEntry(tag) => render_tag_entry(display, tag)?,
+        AppState::Scores(scores) => render_scores(
+            display,
+            &app.ranked_score_rows(&scores.key),
+            scores.saved,
+            app.persistence_warning(),
+        )?,
         AppState::SystemMenu(menu) => render_system_menu(display, menu.selected)?,
         AppState::InterruptConfirm(_) => render_interrupt(display)?,
         AppState::ResizeSuspended(resize) => {
@@ -141,7 +160,10 @@ fn render_boot(
     Ok(())
 }
 
-fn render_launcher(display: &mut dyn Display) -> Result<(), GlyphError> {
+fn render_launcher(
+    display: &mut dyn Display,
+    persistence_warning: Option<&str>,
+) -> Result<(), GlyphError> {
     frame(display, "AFTERHOURS SOFTWARE ARCHIVE")?;
     muted(
         display,
@@ -171,6 +193,14 @@ fn render_launcher(display: &mut dyn Display) -> Result<(), GlyphError> {
         17,
         "Additional catalog software will appear when its program core is installed.",
     )?;
+    if persistence_warning.is_some() {
+        warning(
+            display,
+            4,
+            29,
+            "LOCAL STORAGE DEGRADED - RECORDS MAY NOT SURVIVE THIS SESSION",
+        )?;
+    }
     status_line(display, "ENTER Details    ESC System")?;
     Ok(())
 }
@@ -196,13 +226,218 @@ fn render_details(display: &mut dyn Display) -> Result<(), GlyphError> {
     text(display, 5, 21, "MOVE          LEFT / RIGHT")?;
     text(display, 5, 22, "ROTATE        UP / Z")?;
     text(display, 5, 23, "DROP          DOWN / SPACE")?;
+    emphasized(display, 5, 28, "[ ENTER ] START STANDARD TRANSMISSION")?;
+    status_line(display, "ENTER Start    ESC Return to catalog")?;
+    Ok(())
+}
+
+fn render_loading(display: &mut dyn Display) -> Result<(), GlyphError> {
+    frame(display, "AFTERHOURS PROGRAM LOADER")?;
+    emphasized(display, 35, 13, "SIGNAL STACK VERSION 1.4")?;
+    text(display, 31, 17, "VERIFYING TRANSMISSION TABLES ........ OK")?;
+    text(display, 31, 19, "ALLOCATING CHANNEL MATRIX ............ OK")?;
+    muted(display, 34, 24, "PLEASE KEEP THE ARCHIVE DOOR CLOSED")?;
+    status_line(display, "Loading local program core")?;
+    Ok(())
+}
+
+fn render_pause(display: &mut dyn Display, pause: &PauseState) -> Result<(), GlyphError> {
+    panel(
+        display,
+        GridRect::new(27, 5, 46, 27),
+        SemanticColor::Warning,
+    )?;
     warning(
         display,
-        5,
-        28,
-        "PROGRAM CORE INSTALLATION PENDING - DETAILS ARE READ-ONLY",
+        40,
+        7,
+        match pause.reason {
+            PauseReason::Player => "TRANSMISSION PAUSED",
+            PauseReason::FocusLost => "FOCUS LOST - PAUSED",
+        },
     )?;
-    status_line(display, "ESC Return to catalog")?;
+    let items = [
+        (PauseMenuItem::Resume, "RESUME"),
+        (PauseMenuItem::Restart, "RESTART"),
+        (PauseMenuItem::Controls, "CONTROLS"),
+        (PauseMenuItem::Settings, "SETTINGS"),
+        (PauseMenuItem::Return, "RETURN TO AFTERHOURS"),
+        (PauseMenuItem::Shutdown, "SHUT DOWN"),
+    ];
+    for (index, (item, label)) in items.iter().enumerate() {
+        menu_item(
+            display,
+            36,
+            11 + index as u16 * 3,
+            label,
+            pause.selected == *item,
+        )?;
+    }
+    Ok(())
+}
+
+fn render_controls(display: &mut dyn Display) -> Result<(), GlyphError> {
+    frame(display, "SIGNAL STACK / CONTROLS")?;
+    panel(
+        display,
+        GridRect::new(16, 5, 68, 25),
+        SemanticColor::Primary,
+    )?;
+    text(display, 23, 9, "LEFT / RIGHT       MOVE PACKET")?;
+    text(display, 23, 12, "UP OR X            ROTATE CLOCKWISE")?;
+    text(
+        display,
+        23,
+        15,
+        "Z                  ROTATE COUNTERCLOCKWISE",
+    )?;
+    text(display, 23, 18, "DOWN               SOFT DROP")?;
+    text(display, 23, 21, "SPACE              HARD DROP")?;
+    text(display, 23, 24, "C                  HOLD PACKET")?;
+    status_line(display, "ESC Return to pause menu")?;
+    Ok(())
+}
+
+fn render_settings(display: &mut dyn Display, reduced_motion: bool) -> Result<(), GlyphError> {
+    frame(display, "SIGNAL STACK / SETTINGS")?;
+    panel(
+        display,
+        GridRect::new(20, 9, 60, 17),
+        SemanticColor::Primary,
+    )?;
+    emphasized(display, 27, 13, "ACCESSIBILITY PROFILE")?;
+    selected(
+        display,
+        28,
+        18,
+        &format!(
+            "> REDUCED MOTION     {}",
+            if reduced_motion { "ON " } else { "OFF" }
+        ),
+    )?;
+    muted(display, 28, 22, "ENTER Toggle   ESC Return")?;
+    status_line(display, "Settings are local to this device")?;
+    Ok(())
+}
+
+fn render_game_over(
+    display: &mut dyn Display,
+    game_over: &GameOverState,
+) -> Result<(), GlyphError> {
+    frame(display, "SIGNAL STACK / DIAGNOSTIC")?;
+    warning(display, 35, 6, "SIGNAL CAPACITY EXCEEDED")?;
+    text(
+        display,
+        26,
+        11,
+        "CHANNEL MATRIX ................. SATURATED",
+    )?;
+    text(display, 26, 13, "PACKET INGRESS ................. FAILED")?;
+    text(
+        display,
+        26,
+        15,
+        "TRANSMISSION ................... TERMINATED",
+    )?;
+    emphasized(
+        display,
+        39,
+        20,
+        &format!("SCORE {:010}", game_over.result.score),
+    )?;
+    if game_over.qualifies {
+        emphasized(display, 37, 22, "LOCAL RECORD QUALIFIED")?;
+    }
+    menu_item(
+        display,
+        19,
+        27,
+        if game_over.qualifies {
+            "ENTER TAG"
+        } else {
+            "VIEW SCORES"
+        },
+        game_over.selected == GameOverItem::Continue,
+    )?;
+    menu_item(
+        display,
+        43,
+        27,
+        "RESTART",
+        game_over.selected == GameOverItem::Restart,
+    )?;
+    menu_item(
+        display,
+        62,
+        27,
+        "AFTERHOURS",
+        game_over.selected == GameOverItem::Return,
+    )?;
+    status_line(display, "LEFT/RIGHT Select   ENTER Confirm")?;
+    Ok(())
+}
+
+fn render_tag_entry(display: &mut dyn Display, tag: &TagEntryState) -> Result<(), GlyphError> {
+    frame(display, "NEW LOCAL SYSTEM RECORD")?;
+    panel(
+        display,
+        GridRect::new(18, 7, 64, 22),
+        SemanticColor::Primary,
+    )?;
+    emphasized(display, 34, 11, &format!("SCORE {:010}", tag.result.score))?;
+    text(display, 31, 16, "ENTER OPERATOR IDENTIFICATION")?;
+    for index in 0..3 {
+        let value = char::from(tag.tag[index]).to_string();
+        if tag.cursor == index {
+            selected(display, 44 + index as u16 * 4, 21, &value)?;
+        } else {
+            emphasized(display, 44 + index as u16 * 4, 21, &value)?;
+        }
+    }
+    status_line(
+        display,
+        "TYPE or ARROWS Edit   ENTER Submit   ESC Diagnostics",
+    )?;
+    Ok(())
+}
+
+fn render_scores(
+    display: &mut dyn Display,
+    scores: &[&crate::ScoreRecord],
+    saved: bool,
+    warning_message: Option<&str>,
+) -> Result<(), GlyphError> {
+    frame(display, "AFTERHOURS / LOCAL RECORDS")?;
+    emphasized(display, 5, 4, "SIGNAL STACK - STANDARD TRANSMISSION")?;
+    muted(display, 5, 6, "RANK  TAG        SCORE     CHANNEL TIME")?;
+    for (index, record) in scores.iter().enumerate() {
+        text(
+            display,
+            5,
+            9 + index as u16 * 2,
+            &format!(
+                "{:>2}.   {:3}   {:010}   {:>7} TICKS",
+                index + 1,
+                record.tag,
+                record.score,
+                record.duration.0
+            ),
+        )?;
+    }
+    if scores.is_empty() {
+        muted(display, 5, 10, "NO LOCAL RECORDS")?;
+    }
+    if warning_message.is_some() {
+        warning(
+            display,
+            5,
+            30,
+            "RECORD IS IN MEMORY ONLY - LOCAL SAVE FAILED",
+        )?;
+    } else if saved {
+        emphasized(display, 5, 30, "LOCAL RECORD SAVED")?;
+    }
+    status_line(display, "ENTER or ESC Return to AfterHours")?;
     Ok(())
 }
 

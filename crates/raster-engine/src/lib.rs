@@ -18,16 +18,18 @@ pub use domain::{
     GameId, GameOutcome, GameResult, GameStatus, IdentifierError, ModeId, RulesRevision, RunSeed,
     SimulationStep, SimulationTick, StateHash, ThreeCharacterTag,
 };
-pub use game::{Game, GameDescriptor, GameError, GameRegistry, ModeDescriptor, NewRunRequest};
+pub use game::{
+    Game, GameDescriptor, GameError, GameRegistry, ModeDescriptor, NewRunRequest, RunMetadataSource,
+};
 pub use input::{
     AppAction, DeviceInput, GameAction, InputCapability, InputContext, KeyCode, KeyModifiers,
     PhysicalKey, PointerButton, TextEscapeBehavior,
 };
 pub use input_system::{ActionEvent, ActionPhase, InputSystem, RepeatProfile, map_key_to_action};
 pub use persistence::{
-    AssistanceProfileId, DisplayPalette, EffectsProfile, LOCAL_SCORE_LIMIT, PersistenceError,
-    ScoreRankingKey, ScoreRecord, ScoreRepository, Settings, SettingsRepository, SystemState,
-    SystemStateRepository, insert_score, ranked_scores, score_qualifies,
+    ApplicationRepository, AssistanceProfileId, DisplayPalette, EffectsProfile, LOCAL_SCORE_LIMIT,
+    PersistenceError, ScoreRankingKey, ScoreRecord, ScoreRepository, Settings, SettingsRepository,
+    SystemState, SystemStateRepository, insert_score, ranked_scores, score_qualifies,
 };
 pub use semantic::{
     GridDirection, LiveRegion, SemanticActionKind, SemanticCommand, SemanticEvent, SemanticId,
