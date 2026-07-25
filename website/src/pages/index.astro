@@ -113,12 +113,12 @@ import "../styles/global.css";
       <p>Raster Nights is an open-source software project by Drilon Reçica.</p>
     </footer>
 
-    <script>
-      const powerButton = document.querySelector<HTMLButtonElement>("#power-button");
-      const display = document.querySelector<HTMLElement>("#drx90-display");
-      const status = document.querySelector<HTMLElement>("#machine-status");
-      const errorPanel = document.querySelector<HTMLElement>("#machine-error");
-      const semanticMirror = document.querySelector<HTMLElement>("#drx90-semantic");
+    <script is:inline type="module">
+      const powerButton = document.querySelector("#power-button");
+      const display = document.querySelector("#drx90-display");
+      const status = document.querySelector("#machine-status");
+      const errorPanel = document.querySelector("#machine-error");
+      const semanticMirror = document.querySelector("#drx90-semantic");
 
       if (!powerButton || !display || !status || !errorPanel || !semanticMirror) {
         throw new Error("DRX-90 host controls are missing");
@@ -130,6 +130,7 @@ import "../styles/global.css";
         status.textContent = "POWER: LOADING LOCAL SYSTEM";
 
         try {
+          // This inline module lets the browser load wasm-pack output from public/ directly.
           const modulePath = "/wasm/raster_web.js";
           const wasm = await import(/* @vite-ignore */ modulePath);
           await wasm.default();
