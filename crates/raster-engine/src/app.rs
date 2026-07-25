@@ -1467,6 +1467,14 @@ mod tests {
         press(&mut app, AppAction::Pause);
         assert_eq!(app.state_kind(), AppStateKind::Paused);
         assert!(app.is_suspended());
+        let mut display = raster_display::DisplayBuffer::canonical();
+        app.render(&mut display).expect("pause screen renders");
+        assert!(
+            display
+                .snapshot()
+                .character_grid()
+                .contains("TRANSMISSION PAUSED")
+        );
         press(&mut app, AppAction::Confirm);
         assert_eq!(app.state_kind(), AppStateKind::Playing);
 
@@ -1474,15 +1482,28 @@ mod tests {
             tick: SimulationTick(2),
         });
         assert_eq!(app.state_kind(), AppStateKind::GameOver);
+        app.render(&mut display).expect("game-over screen renders");
+        assert!(
+            display
+                .snapshot()
+                .character_grid()
+                .contains("SIGNAL CAPACITY EXCEEDED")
+        );
         press(&mut app, AppAction::Confirm);
         assert_eq!(app.state_kind(), AppStateKind::TagEntry);
+        app.render(&mut display).expect("tag screen renders");
+        assert!(
+            display
+                .snapshot()
+                .character_grid()
+                .contains("ENTER OPERATOR IDENTIFICATION")
+        );
         press(&mut app, AppAction::TextInput('D'));
         press(&mut app, AppAction::TextInput('R'));
         press(&mut app, AppAction::TextInput('X'));
         press(&mut app, AppAction::Confirm);
         assert_eq!(app.state_kind(), AppStateKind::Scores);
 
-        let mut display = raster_display::DisplayBuffer::canonical();
         app.render(&mut display).expect("score screen renders");
         let grid = display.snapshot().character_grid();
         assert!(grid.contains("DRX"));

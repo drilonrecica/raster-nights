@@ -72,6 +72,22 @@ pub fn render(game: &SignalStack, display: &mut dyn Display) -> Result<(), Glyph
             style(packet_color(*packet)).bold(),
         )?;
     }
+    let danger = (HIDDEN_ROWS..HIDDEN_ROWS + 5)
+        .any(|y| (0..MATRIX_WIDTH).any(|x| game.cell(x, y).is_some()));
+    display.text(
+        GridPoint::new(68, 29),
+        if danger {
+            "STATUS  MATRIX CRITICAL"
+        } else {
+            "STATUS  SIGNAL STABLE"
+        },
+        style(if danger {
+            SemanticColor::Danger
+        } else {
+            SemanticColor::Success
+        })
+        .bold(),
+    )?;
 
     display.text(
         GridPoint::new(4, 33),
@@ -172,5 +188,52 @@ mod tests {
                 .iter()
                 .any(|symbol| grid.contains(symbol))
         );
+    }
+
+    #[test]
+    fn mid_game_snapshot_renders_locked_and_active_packets() {
+        let mut game = SignalStack::new(RunSeed(12));
+        for x in 0..6 {
+            game.matrix[super::super::matrix_index(x, 23).expect("fixture coordinate")] =
+                Some(Packet::J);
+        }
+        let mut display = DisplayBuffer::canonical();
+        render(&game, &mut display).expect("render");
+        let grid = display.snapshot().character_grid();
+
+        assert!(grid.contains("JJJJJJJJJJJJ"));
+        assert!(grid.contains("STATUS  SIGNAL STABLE"));
+    }
+
+    #[test]
+    fn near_saturation_snapshot_has_textual_danger_status() {
+        let mut game = SignalStack::new(RunSeed(13));
+        game.matrix[super::super::matrix_index(0, HIDDEN_ROWS).expect("fixture coordinate")] =
+            Some(Packet::Z);
+        let mut display = DisplayBuffer::canonical();
+        render(&game, &mut display).expect("render");
+        let grid = display.snapshot().character_grid();
+
+        assert!(grid.contains("STATUS  MATRIX CRITICAL"));
+        assert!(grid.contains("ZZ"));
+    }
+
+    #[test]
+    fn pending_multi_clear_fixture_remains_inside_canonical_board() {
+        let mut game = SignalStack::new(RunSeed(14));
+        for y in 20..24 {
+            for x in 0..MATRIX_WIDTH {
+                if x != 4 {
+                    game.matrix[super::super::matrix_index(x, y).expect("fixture coordinate")] =
+                        Some(Packet::I);
+                }
+            }
+        }
+        let mut display = DisplayBuffer::canonical();
+        render(&game, &mut display).expect("render");
+        let snapshot = display.snapshot();
+
+        assert_eq!(snapshot.size, raster_display::DISPLAY_SIZE);
+        assert_eq!(snapshot.character_grid().lines().count(), 36);
     }
 }
