@@ -738,6 +738,31 @@ A target release procedure:
 10. CI creates draft or final GitHub release.
 11. Deploy website.
 12. Update Homebrew tap.
+
+The 0.1 release-candidate workflow deliberately stops before publication. A
+`v*` tag builds and uploads workflow artifacts, but does not create a GitHub
+release, deploy the website, or update a Homebrew tap.
+
+Build individual archives locally with:
+
+```bash
+./scripts/package-native.sh x86_64-unknown-linux-gnu 0.1.0-rc.1
+./scripts/package-web.sh 0.1.0-rc.1
+```
+
+The native script also accepts `x86_64-apple-darwin` and
+`aarch64-apple-darwin` when run on the matching macOS host. Archives normalize
+ownership, permissions, ordering, and timestamps. Set `SOURCE_DATE_EPOCH` when
+a release needs a specific normalized timestamp.
+
+After all four archives are collected:
+
+```bash
+./scripts/generate-checksums.sh \
+  release-artifacts/SHA256SUMS \
+  release-artifacts/*.tar.gz
+./scripts/validate-release-artifacts.sh release-artifacts 0.1.0-rc.1
+```
 13. Verify installation from published artifacts.
 
 No code signing or notarization.
@@ -756,6 +781,19 @@ The Homebrew formula should:
 - be maintained from a dedicated tap repository if preferred.
 
 Homebrew release automation should remain a small script or clear workflow step.
+
+Generate the formula from final macOS archive checksums:
+
+```bash
+./scripts/generate-homebrew-formula.py \
+  --version 0.1.0-rc.1 \
+  --base-url https://example.invalid/releases/v0.1.0-rc.1/ \
+  --checksums release-artifacts/SHA256SUMS \
+  --output release-artifacts/raster-nights.rb
+```
+
+The release workflow uses the eventual GitHub release download URL. Formula
+generation does not upload or modify the separate Homebrew tap.
 
 ---
 

@@ -39,6 +39,9 @@ https://github.com/dtolnay/thiserror
 time — MIT OR Apache-2.0
 https://github.com/time-rs/time
 
+toml — MIT OR Apache-2.0
+https://github.com/toml-rs/toml
+
 unicode-width — MIT OR Apache-2.0
 https://github.com/unicode-rs/unicode-width
 
@@ -62,6 +65,6 @@ from Hack Regular. Hack is Copyright 2018 Source Foundry Authors and is
 distributed under the MIT License.
 https://github.com/source-foundry/Hack
 
-This notice records direct dependencies and bundled renderer data. Release
-packaging will also include a machine-generated report for transitive
-dependencies.
+This notice records direct dependencies and bundled renderer data for the 0.1
+release candidate. Applicable license files and copyright notices distributed
+by transitive dependencies remain authoritative for those components.

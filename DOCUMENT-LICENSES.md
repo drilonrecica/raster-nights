@@ -29,11 +29,15 @@ visual identity, creative direction, or mixed creative material and are not
 licensed under CC BY 4.0 or MPL-2.0:
 
 - `README.md`
+- `ASSET-LICENSES.md`
+- `CHANGELOG.md`
+- `TRADEMARKS.md`
 - `docs/CANON.md`
 - `docs/DECISIONS.md`
 - `docs/DESIGN.md`
 - `docs/PRODUCT.md`
 - `docs/ROADMAP.md`
+- release notes under `docs/releases/`
 
 Unless an individual file states otherwise, these documents are all rights
 reserved.

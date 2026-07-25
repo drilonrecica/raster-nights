@@ -13,6 +13,7 @@ for required_command in cargo wasm-pack npm; do
     fi
 done
 
+./scripts/test-release-tooling.sh
 cargo fmt --all --check
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace

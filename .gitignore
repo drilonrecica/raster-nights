@@ -18,6 +18,7 @@ target
 /website/dist/
 /website/node_modules/
 /website/public/wasm/
+/release-artifacts/
 
 # RustRover
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can

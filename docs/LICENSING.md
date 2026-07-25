@@ -375,10 +375,10 @@ DOCUMENT-LICENSES.md     Markdown file license map
 docs/LICENSING.md        explanatory policy
 ```
 
-`LICENSE` and `DOCUMENT-LICENSES.md` currently exist. `NOTICE`,
-`ASSET-LICENSES.md`, and `TRADEMARKS.md` remain required before the first public
-release. Do not create empty compliance files merely to satisfy the filename
-list; add them when their content is accurate.
+These files are present for the 0.1 release candidate. Keep `NOTICE` and
+`ASSET-LICENSES.md` synchronized whenever dependencies or distributed assets
+change. Do not leave placeholder compliance entries merely to satisfy the
+filename list.
 
 ---
 

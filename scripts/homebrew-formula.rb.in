@@ -1,0 +1,29 @@
+# typed: false
+# frozen_string_literal: true
+
+# Generated from scripts/homebrew-formula.rb.in. Do not edit by hand.
+class RasterNights < Formula
+  desc "Retro game system for the terminal"
+  homepage "https://github.com/drilonrecica/raster-nights"
+  version "@VERSION@"
+  license "MPL-2.0"
+  depends_on :macos
+
+  on_arm do
+    url "@ARM64_URL@"
+    sha256 "@ARM64_SHA256@"
+  end
+
+  on_intel do
+    url "@X86_64_URL@"
+    sha256 "@X86_64_SHA256@"
+  end
+
+  def install
+    bin.install "raster-nights"
+  end
+
+  test do
+    system bin/"raster-nights", "validate-content"
+  end
+end

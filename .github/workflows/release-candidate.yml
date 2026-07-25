@@ -1,0 +1,156 @@
+# SPDX-License-Identifier: MPL-2.0
+
+name: Release candidate artifacts
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  native:
+    name: Native ${{ matrix.platform }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: Linux x86-64
+            runner: ubuntu-24.04
+            target: x86_64-unknown-linux-gnu
+          - platform: macOS Intel
+            runner: macos-15-intel
+            target: x86_64-apple-darwin
+          - platform: macOS Apple Silicon
+            runner: macos-15
+            target: aarch64-apple-darwin
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Cache Rust builds
+        uses: Swatinem/rust-cache@v2
+
+      - name: Derive release version
+        id: release
+        shell: bash
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Build deterministic archive
+        run: >-
+          ./scripts/package-native.sh
+          "${{ matrix.target }}"
+          "${{ steps.release.outputs.version }}"
+          release-artifacts
+
+      - name: Upload native archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: raster-nights-${{ matrix.target }}
+          path: release-artifacts/*.tar.gz
+          if-no-files-found: error
+
+  web:
+    name: Browser bundle
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Cache Rust builds
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install wasm-pack
+        uses: taiki-e/install-action@wasm-pack
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+
+      - name: Derive release version
+        id: release
+        shell: bash
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Build deterministic browser archive
+        run: >-
+          ./scripts/package-web.sh
+          "${{ steps.release.outputs.version }}"
+          release-artifacts
+
+      - name: Upload browser archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: raster-nights-web
+          path: release-artifacts/*.tar.gz
+          if-no-files-found: error
+
+  verify:
+    name: Checksums and archive validation
+    needs: [native, web]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Download archives
+        uses: actions/download-artifact@v4
+        with:
+          pattern: raster-nights-*
+          path: release-artifacts
+          merge-multiple: true
+
+      - name: Derive release version
+        id: release
+        shell: bash
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Generate checksums
+        run: >-
+          ./scripts/generate-checksums.sh
+          release-artifacts/SHA256SUMS
+          release-artifacts/*.tar.gz
+
+      - name: Validate archives
+        run: >-
+          ./scripts/validate-release-artifacts.sh
+          release-artifacts
+          "${{ steps.release.outputs.version }}"
+
+      - name: Generate Homebrew formula
+        run: >-
+          ./scripts/generate-homebrew-formula.py
+          --version "${{ steps.release.outputs.version }}"
+          --base-url
+          "https://github.com/drilonrecica/raster-nights/releases/download/${GITHUB_REF_NAME}/"
+          --checksums release-artifacts/SHA256SUMS
+          --output release-artifacts/raster-nights.rb
+
+      - name: Upload verified release set
+        uses: actions/upload-artifact@v4
+        with:
+          name: raster-nights-${{ github.ref_name }}
+          path: |
+            release-artifacts/*.tar.gz
+            release-artifacts/SHA256SUMS
+            release-artifacts/raster-nights.rb
+          if-no-files-found: error
