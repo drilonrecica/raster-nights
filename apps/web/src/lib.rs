@@ -45,7 +45,7 @@ mod browser {
     }
 
     enum BrowserEvent {
-        Activity,
+        KeyActivity(Option<DeviceInput>),
         Device(DeviceInput),
         SemanticActivate(SemanticId),
     }
@@ -133,7 +133,14 @@ mod browser {
 
         fn handle_event(&mut self, event: BrowserEvent) {
             match event {
-                BrowserEvent::Activity => self.app.handle_activity(),
+                BrowserEvent::KeyActivity(device_input) => {
+                    if self.app.handle_activity() {
+                        return;
+                    }
+                    if let Some(device_input) = device_input {
+                        self.handle_device_input(device_input);
+                    }
+                }
                 BrowserEvent::Device(DeviceInput::FocusLost) => {
                     self.focus_suspended = true;
                     self.app.handle_focus_lost();
@@ -149,16 +156,18 @@ mod browser {
                     column,
                     row,
                 }) => self.app.handle_pointer_press(column, row),
-                BrowserEvent::Device(device_input) => {
-                    for action in self.input.handle(
-                        device_input,
-                        self.clock.current_tick(),
-                        self.app.input_context(),
-                    ) {
-                        self.app.handle_action(action.action, action.phase);
-                    }
-                }
+                BrowserEvent::Device(device_input) => self.handle_device_input(device_input),
                 BrowserEvent::SemanticActivate(id) => self.app.activate_semantic_node(&id),
+            }
+        }
+
+        fn handle_device_input(&mut self, device_input: DeviceInput) {
+            for action in self.input.handle(
+                device_input,
+                self.clock.current_tick(),
+                self.app.input_context(),
+            ) {
+                self.app.handle_action(action.action, action.phase);
             }
         }
     }
@@ -275,21 +284,18 @@ mod browser {
 
         let keydown_events = Rc::clone(&events);
         let keydown = Closure::<dyn FnMut(KeyboardEvent)>::new(move |event| {
-            keydown_events.borrow_mut().push(BrowserEvent::Activity);
-            let Some(key) = map_keyboard_event(&event) else {
-                return;
-            };
-            if should_prevent_default(&key) {
-                event.prevent_default();
-            }
-            let input = if event.repeat() {
-                DeviceInput::KeyRepeated(key)
-            } else {
-                DeviceInput::KeyPressed(key)
-            };
-            keydown_events
-                .borrow_mut()
-                .push(BrowserEvent::Device(input));
+            keydown_events.borrow_mut().push(BrowserEvent::KeyActivity(
+                map_keyboard_event(&event).map(|key| {
+                    if should_prevent_default(&key) {
+                        event.prevent_default();
+                    }
+                    if event.repeat() {
+                        DeviceInput::KeyRepeated(key)
+                    } else {
+                        DeviceInput::KeyPressed(key)
+                    }
+                }),
+            ));
         });
         document.add_event_listener_with_callback("keydown", keydown.as_ref().unchecked_ref())?;
         keydown.forget();

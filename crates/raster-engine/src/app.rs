@@ -478,9 +478,14 @@ impl Application {
         }
     }
 
-    pub fn handle_activity(&mut self) {
+    /// Skips an active boot sequence and reports whether the triggering host
+    /// event was consumed.
+    pub fn handle_activity(&mut self) -> bool {
         if matches!(self.state, AppState::ColdBoot(_) | AppState::WarmBoot(_)) {
             self.transition(AppState::Launcher);
+            true
+        } else {
+            false
         }
     }
 

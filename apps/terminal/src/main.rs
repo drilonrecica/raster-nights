@@ -209,8 +209,8 @@ fn handle_terminal_event(
 ) {
     match event {
         Event::Key(key) => {
-            if key.kind != KeyEventKind::Release {
-                app.handle_activity();
+            if key.kind != KeyEventKind::Release && app.handle_activity() {
+                return;
             }
             let Some(device_input) = map_key_event(key) else {
                 return;
@@ -381,5 +381,24 @@ mod tests {
                 },
             }))
         );
+    }
+
+    #[test]
+    fn boot_skip_key_is_not_reused_as_launcher_confirmation() {
+        let mut app = Application::new(HostKind::Native, CalendarDate::new(25, 7, 2026), true);
+        let mut input = InputSystem::new(InputCapability::Enhanced);
+
+        handle_terminal_event(
+            Event::Key(KeyEvent::new(
+                CrosstermKeyCode::Enter,
+                CrosstermKeyModifiers::NONE,
+            )),
+            &mut app,
+            &mut input,
+            raster_engine::SimulationTick(1),
+            ratatui::layout::Size::new(120, 40),
+        );
+
+        assert_eq!(app.state_kind(), raster_engine::AppStateKind::Launcher);
     }
 }
