@@ -38,6 +38,7 @@ mod browser {
     }
 
     enum BrowserEvent {
+        Activity,
         Device(DeviceInput),
         SemanticActivate(SemanticId),
     }
@@ -105,6 +106,7 @@ mod browser {
 
         fn handle_event(&mut self, event: BrowserEvent) {
             match event {
+                BrowserEvent::Activity => self.app.handle_activity(),
                 BrowserEvent::Device(DeviceInput::FocusLost) => {
                     self.focus_suspended = true;
                     for action in self.input.release_all(self.clock.current_tick()) {
@@ -221,6 +223,7 @@ mod browser {
 
         let keydown_events = Rc::clone(&events);
         let keydown = Closure::<dyn FnMut(KeyboardEvent)>::new(move |event| {
+            keydown_events.borrow_mut().push(BrowserEvent::Activity);
             let Some(key) = map_keyboard_event(&event) else {
                 return;
             };

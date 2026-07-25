@@ -84,7 +84,7 @@ fn run_application(capability: InputCapability) -> Result<()> {
         terminal
             .draw(|frame| render_frame(frame, &display))
             .context("failed to draw application display")?;
-        std::thread::sleep(Duration::from_millis(8));
+        std::thread::sleep(Duration::from_millis(16));
     }
 
     drop(terminal);
@@ -146,6 +146,9 @@ fn handle_terminal_event(
 ) {
     match event {
         Event::Key(key) => {
+            if key.kind != KeyEventKind::Release {
+                app.handle_activity();
+            }
             let Some(device_input) = map_key_event(key) else {
                 return;
             };

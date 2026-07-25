@@ -230,6 +230,12 @@ impl Application {
         }
     }
 
+    pub fn handle_activity(&mut self) {
+        if matches!(self.state, AppState::ColdBoot(_) | AppState::WarmBoot(_)) {
+            self.transition(AppState::Launcher);
+        }
+    }
+
     pub fn handle_resize(&mut self, columns: u16, rows: u16) {
         let valid = columns >= MINIMUM_COLUMNS && rows >= MINIMUM_ROWS;
         if let AppState::ResizeSuspended(resize) = &mut self.state {
@@ -253,6 +259,10 @@ impl Application {
     }
 
     pub fn handle_pointer_press(&mut self, column: u16, row: u16) {
+        if matches!(self.state, AppState::ColdBoot(_) | AppState::WarmBoot(_)) {
+            self.transition(AppState::Launcher);
+            return;
+        }
         match &mut self.state {
             AppState::Launcher if (7..=9).contains(&row) && (3..=68).contains(&column) => {
                 self.transition(AppState::SoftwareDetails);
