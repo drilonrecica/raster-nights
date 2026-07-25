@@ -2,6 +2,7 @@
 
 //! Host-independent persisted domain records and repository ports.
 
+use std::collections::HashSet;
 use std::fmt;
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer, de};
@@ -142,7 +143,7 @@ pub struct ScoreRecord {
 
 pub const LOCAL_SCORE_LIMIT: usize = 10;
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct ScoreRankingKey {
     pub game_id: GameId,
     pub mode_id: ModeId,
@@ -209,6 +210,21 @@ pub fn insert_score(scores: &mut Vec<ScoreRecord>, record: ScoreRecord) -> bool 
     scores.push(record);
     prune_ranking(scores, &key);
     true
+}
+
+/// Repairs every ranking in a loaded score board to the supported local limit.
+///
+/// Returns whether any records were removed so callers can persist the repair.
+pub fn normalize_scores(scores: &mut Vec<ScoreRecord>) -> bool {
+    let original_len = scores.len();
+    let keys = scores
+        .iter()
+        .map(ScoreRecord::ranking_key)
+        .collect::<HashSet<_>>();
+    for key in keys {
+        prune_ranking(scores, &key);
+    }
+    scores.len() != original_len
 }
 
 fn prune_ranking(scores: &mut Vec<ScoreRecord>, key: &ScoreRankingKey) {
@@ -388,5 +404,35 @@ mod tests {
         assert_eq!(scores.len(), LOCAL_SCORE_LIMIT);
         assert!(scores.iter().any(|record| record.score == 2_000));
         assert!(scores.iter().all(|record| record.score >= 992));
+    }
+
+    #[test]
+    fn normalization_repairs_every_oversized_ranking() {
+        let mut scores = (0..LOCAL_SCORE_LIMIT + 2)
+            .map(|index| score(1_000 - index as u64, index as i64))
+            .collect::<Vec<_>>();
+        let other_mode = ModeId::parse("expert-transmission").expect("valid ID");
+        scores.extend((0..LOCAL_SCORE_LIMIT + 1).map(|index| {
+            let mut record = score(2_000 - index as u64, 100 + index as i64);
+            record.mode_id = other_mode.clone();
+            record
+        }));
+
+        assert!(normalize_scores(&mut scores));
+        assert_eq!(
+            scores
+                .iter()
+                .filter(|record| record.mode_id.as_str() == "standard-transmission")
+                .count(),
+            LOCAL_SCORE_LIMIT
+        );
+        assert_eq!(
+            scores
+                .iter()
+                .filter(|record| record.mode_id.as_str() == "expert-transmission")
+                .count(),
+            LOCAL_SCORE_LIMIT
+        );
+        assert!(!normalize_scores(&mut scores));
     }
 }

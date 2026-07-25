@@ -5,7 +5,7 @@ use crate::{
     GameResult, GameStatus, InputContext, LiveRegion, NewRunRequest, RunMetadataSource,
     ScoreRecord, SemanticActionKind, SemanticId, SemanticNode, SemanticRole, SemanticState,
     SemanticUiTree, Settings, SimulationStep, SystemState, TextEscapeBehavior, ThreeCharacterTag,
-    insert_score, ranked_scores, score_qualifies,
+    insert_score, normalize_scores, ranked_scores, score_qualifies,
 };
 use raster_display::{Display, GlyphError};
 
@@ -253,12 +253,25 @@ impl Application {
             SystemState::default(),
             "system state",
         );
-        let (scores, scores_warning) =
+        let (mut scores, scores_warning) =
             load_or_default(repository.load_scores(), Vec::new(), "scores");
-        let warning = [settings_warning, system_warning, scores_warning]
-            .into_iter()
-            .flatten()
-            .next();
+        let score_repair_warning = if scores_warning.is_none() && normalize_scores(&mut scores) {
+            repository
+                .save_scores(&scores)
+                .err()
+                .map(|error| format!("Repaired local scores could not be saved: {error}"))
+        } else {
+            None
+        };
+        let warning = [
+            settings_warning,
+            system_warning,
+            scores_warning,
+            score_repair_warning,
+        ]
+        .into_iter()
+        .flatten()
+        .next();
         let state = if system_state.privacy_acknowledged {
             AppState::WarmBoot(BootState { elapsed_ticks: 0 })
         } else {
@@ -1451,6 +1464,8 @@ fn pause_nested_game(state: &mut AppState) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::{Arc, Mutex};
+
     use crate::{
         GameAction, GameDescriptor, GameError, GameId, GameOutcome, ModeDescriptor, ModeId,
         PersistenceError, RulesRevision, RunSeed, ScoreRepository, SettingsRepository,
@@ -1474,6 +1489,45 @@ mod tests {
             Box::new(TestRepository::default()),
             Box::new(TestMetadata),
         )
+    }
+
+    fn stored_score(score: u64, recorded_at_unix_seconds: i64) -> ScoreRecord {
+        ScoreRecord {
+            game_id: GameId::parse("signal-stack").expect("valid ID"),
+            mode_id: ModeId::parse("standard-transmission").expect("valid ID"),
+            rules_revision: RulesRevision::new(1).expect("valid revision"),
+            assistance_profile: canonical_assistance(),
+            tag: ThreeCharacterTag::parse("NUL").expect("valid tag"),
+            score,
+            duration: SimulationTick(60),
+            seed: RunSeed(1),
+            outcome: GameOutcome::GameOver,
+            final_state_hash: StateHash(score),
+            recorded_at_unix_seconds,
+        }
+    }
+
+    #[test]
+    fn startup_durably_repairs_an_oversized_score_board() {
+        let scores = Arc::new(Mutex::new(
+            (0..crate::LOCAL_SCORE_LIMIT + 3)
+                .map(|index| stored_score(1_000 - index as u64, index as i64))
+                .collect(),
+        ));
+
+        let _app = Application::with_services(
+            HostKind::Native,
+            CalendarDate::new(25, 7, 2026),
+            Box::new(TestRegistry),
+            Box::new(SharedScoreRepository {
+                scores: Arc::clone(&scores),
+            }),
+            Box::new(TestMetadata),
+        );
+
+        let persisted = scores.lock().expect("score lock");
+        assert_eq!(persisted.len(), crate::LOCAL_SCORE_LIMIT);
+        assert!(persisted.iter().all(|record| record.score >= 991));
     }
 
     #[test]
@@ -1845,6 +1899,42 @@ mod tests {
 
         fn save_system_state(&mut self, state: &SystemState) -> Result<(), PersistenceError> {
             self.system = state.clone();
+            Ok(())
+        }
+    }
+
+    #[derive(Debug)]
+    struct SharedScoreRepository {
+        scores: Arc<Mutex<Vec<ScoreRecord>>>,
+    }
+
+    impl SettingsRepository for SharedScoreRepository {
+        fn load_settings(&mut self) -> Result<Settings, PersistenceError> {
+            Ok(Settings::default())
+        }
+
+        fn save_settings(&mut self, _settings: &Settings) -> Result<(), PersistenceError> {
+            Ok(())
+        }
+    }
+
+    impl ScoreRepository for SharedScoreRepository {
+        fn load_scores(&mut self) -> Result<Vec<ScoreRecord>, PersistenceError> {
+            Ok(self.scores.lock().expect("score lock").clone())
+        }
+
+        fn save_scores(&mut self, scores: &[ScoreRecord]) -> Result<(), PersistenceError> {
+            *self.scores.lock().expect("score lock") = scores.to_vec();
+            Ok(())
+        }
+    }
+
+    impl SystemStateRepository for SharedScoreRepository {
+        fn load_system_state(&mut self) -> Result<SystemState, PersistenceError> {
+            Ok(SystemState::default())
+        }
+
+        fn save_system_state(&mut self, _state: &SystemState) -> Result<(), PersistenceError> {
             Ok(())
         }
     }

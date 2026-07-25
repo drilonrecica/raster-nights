@@ -29,7 +29,8 @@ pub use input_system::{ActionEvent, ActionPhase, InputSystem, RepeatProfile, map
 pub use persistence::{
     ApplicationRepository, AssistanceProfileId, DisplayPalette, EffectsProfile, LOCAL_SCORE_LIMIT,
     PersistenceError, ScoreRankingKey, ScoreRecord, ScoreRepository, Settings, SettingsRepository,
-    SystemState, SystemStateRepository, insert_score, ranked_scores, score_qualifies,
+    SystemState, SystemStateRepository, insert_score, normalize_scores, ranked_scores,
+    score_qualifies,
 };
 pub use semantic::{
     GridDirection, LiveRegion, SemanticActionKind, SemanticCommand, SemanticEvent, SemanticId,
