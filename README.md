@@ -24,7 +24,10 @@ The official game catalog, fictional canon, art direction, names, music, and roa
 
 ## Project status
 
-Raster Nights is in the specification and initial implementation stage.
+Raster Nights is in active implementation. The shared display, deterministic
+clock and input foundation, native diagnostic host, browser diagnostic host,
+and website shell are working. The complete First Signal product loop is not
+yet playable.
 
 The first public milestone, **Raster Nights 0.1 — System Preview**, is planned to include:
 
