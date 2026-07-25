@@ -2,6 +2,8 @@
 
 //! Official game implementations and their explicit registry.
 
+pub mod signal_stack;
+
 #[cfg(all(test, target_arch = "wasm32"))]
 mod wasm_tests {
     use raster_display::{DISPLAY_HEIGHT, DISPLAY_WIDTH, DisplayBuffer, render_diagnostic_grid};
