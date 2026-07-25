@@ -11,8 +11,8 @@ mod ratatui_adapter;
 
 pub use buffer::{Display, DisplayBuffer, DisplaySnapshot, DisplayViewport};
 pub use cell::{
-    BorderGlyphs, BorderStyle, CellModifiers, CellStyle, GameCell, GlyphError, SemanticColor,
-    TextStyle, validate_glyph,
+    BorderGlyphs, BorderStyle, CellModifiers, CellStyle, GameCell, GlyphError, Palette, RgbColor,
+    SemanticColor, TextStyle, validate_glyph,
 };
 pub use diagnostics::render_diagnostic_grid;
 pub use geometry::{GridPoint, GridRect, GridSize};

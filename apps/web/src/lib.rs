@@ -300,7 +300,12 @@ mod browser {
             area.x + (area.width - DISPLAY_WIDTH) / 2,
             area.y + (area.height - DISPLAY_HEIGHT) / 2,
         );
-        copy_to_ratatui(&runtime.display, frame.buffer_mut(), origin);
+        copy_to_ratatui(
+            &runtime.display,
+            frame.buffer_mut(),
+            origin,
+            runtime.app.display_palette(),
+        );
     }
 
     fn request_browser_frame(callback: &Closure<dyn FnMut()>) -> Result<(), JsValue> {

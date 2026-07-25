@@ -348,6 +348,15 @@ impl Application {
         self.exit_requested
     }
 
+    #[must_use]
+    pub fn display_palette(&self) -> raster_display::Palette {
+        self.runtime
+            .as_ref()
+            .map_or_else(raster_display::Palette::rcw_standard, |runtime| {
+                runtime.settings.display_palette.resolve()
+            })
+    }
+
     pub fn handle_action(&mut self, action: AppAction, phase: ActionPhase) {
         if phase == ActionPhase::Released {
             return;

@@ -44,6 +44,10 @@ fn main() -> Result<()> {
     let result = match command {
         Command::Run => run_application(capability),
         Command::DisplayTest => run_display_test(capability),
+        #[cfg(debug_assertions)]
+        Command::TestPanicAfterTerminalInit => {
+            panic!("intentional terminal-restoration test panic")
+        }
     };
 
     drop(session);
@@ -89,7 +93,7 @@ fn run_application(capability: InputCapability) -> Result<()> {
             .autoresize()
             .context("failed to resize terminal renderer")?;
         terminal
-            .draw(|frame| render_frame(frame, &display))
+            .draw(|frame| render_frame(frame, &display, app.display_palette()))
             .context("failed to draw application display")?;
         std::thread::sleep(Duration::from_millis(16));
     }
@@ -172,7 +176,7 @@ fn run_display_test(capability: InputCapability) -> Result<()> {
     let mut terminal = Terminal::new(backend).context("failed to create terminal renderer")?;
     loop {
         terminal
-            .draw(|frame| render_frame(frame, &display))
+            .draw(|frame| render_frame(frame, &display, raster_display::Palette::rcw_standard()))
             .context("failed to draw diagnostic display")?;
         if event::poll(Duration::from_millis(100)).context("failed to poll terminal input")?
             && let Event::Key(key) = event::read().context("failed to read terminal input")?
@@ -188,6 +192,8 @@ fn run_display_test(capability: InputCapability) -> Result<()> {
 enum Command {
     Run,
     DisplayTest,
+    #[cfg(debug_assertions)]
+    TestPanicAfterTerminalInit,
 }
 
 fn parse_arguments() -> Result<Command> {
@@ -196,6 +202,10 @@ fn parse_arguments() -> Result<Command> {
     match (arguments.next(), arguments.next()) {
         (None, None) => Ok(Command::Run),
         (Some(command), None) if command == "display-test" => Ok(Command::DisplayTest),
+        #[cfg(debug_assertions)]
+        (Some(command), None) if command == "--test-panic-after-terminal-init" => {
+            Ok(Command::TestPanicAfterTerminalInit)
+        }
         _ => bail!("usage: raster-nights [display-test]"),
     }
 }
@@ -305,7 +315,7 @@ fn local_date() -> CalendarDate {
     CalendarDate::new(now.day(), u8::from(now.month()), now.year())
 }
 
-fn render_frame(frame: &mut Frame<'_>, source: &DisplayBuffer) {
+fn render_frame(frame: &mut Frame<'_>, source: &DisplayBuffer, palette: raster_display::Palette) {
     let area = frame.area();
     frame.buffer_mut().reset();
     if area.width < DISPLAY_WIDTH || area.height < DISPLAY_HEIGHT {
@@ -328,7 +338,7 @@ fn render_frame(frame: &mut Frame<'_>, source: &DisplayBuffer) {
         area.x + (area.width - DISPLAY_WIDTH) / 2,
         area.y + (area.height - DISPLAY_HEIGHT) / 2,
     );
-    copy_to_ratatui(source, frame.buffer_mut(), origin);
+    copy_to_ratatui(source, frame.buffer_mut(), origin, palette);
 }
 
 #[cfg(test)]

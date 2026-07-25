@@ -5,6 +5,7 @@
 use std::collections::HashSet;
 use std::fmt;
 
+use raster_display::Palette;
 use serde::{Deserialize, Deserializer, Serialize, Serializer, de};
 use thiserror::Error;
 
@@ -24,6 +25,20 @@ pub enum DisplayPalette {
     MidnightVga,
     HighContrast,
     PaperTerminal,
+}
+
+impl DisplayPalette {
+    #[must_use]
+    pub const fn resolve(self) -> Palette {
+        match self {
+            Self::RcwStandard => Palette::rcw_standard(),
+            Self::AmberOffice => Palette::amber_office(),
+            Self::GreenPhosphor => Palette::green_phosphor(),
+            Self::MidnightVga => Palette::midnight_vga(),
+            Self::HighContrast => Palette::high_contrast(),
+            Self::PaperTerminal => Palette::paper_terminal(),
+        }
+    }
 }
 
 /// Visual-effects preset. Individual controls remain explicit for accessibility.

@@ -6,10 +6,15 @@ use ratatui::{
     style::{Color, Modifier, Style},
 };
 
-use crate::{CellModifiers, Display, DisplayBuffer, GridPoint, SemanticColor};
+use crate::{CellModifiers, Display, DisplayBuffer, GridPoint, Palette, RgbColor};
 
 /// Copies the project cell buffer into a Ratatui target at the requested origin.
-pub fn copy_to_ratatui(source: &DisplayBuffer, target: &mut Buffer, origin: GridPoint) {
+pub fn copy_to_ratatui(
+    source: &DisplayBuffer,
+    target: &mut Buffer,
+    origin: GridPoint,
+    palette: Palette,
+) {
     for y in 0..source.size().height {
         for x in 0..source.size().width {
             let source_point = GridPoint::new(x, y);
@@ -22,31 +27,20 @@ pub fn copy_to_ratatui(source: &DisplayBuffer, target: &mut Buffer, origin: Grid
             };
             target_cell
                 .set_char(source_cell.glyph())
-                .set_style(to_ratatui_style(source_cell.style));
+                .set_style(to_ratatui_style(source_cell.style, palette));
         }
     }
 }
 
-fn to_ratatui_style(style: crate::CellStyle) -> Style {
+fn to_ratatui_style(style: crate::CellStyle, palette: Palette) -> Style {
     Style::default()
-        .fg(to_ratatui_color(style.foreground))
-        .bg(to_ratatui_color(style.background))
+        .fg(to_ratatui_color(palette.resolve(style.foreground)))
+        .bg(to_ratatui_color(palette.resolve(style.background)))
         .add_modifier(to_ratatui_modifiers(style.modifiers))
 }
 
-const fn to_ratatui_color(color: SemanticColor) -> Color {
-    match color {
-        SemanticColor::Background => Color::Rgb(2, 8, 10),
-        SemanticColor::Surface => Color::Rgb(10, 20, 24),
-        SemanticColor::Text => Color::Rgb(205, 219, 214),
-        SemanticColor::Muted => Color::Rgb(103, 126, 124),
-        SemanticColor::Primary => Color::Rgb(69, 224, 211),
-        SemanticColor::Secondary => Color::Rgb(76, 139, 245),
-        SemanticColor::Accent => Color::Rgb(214, 100, 255),
-        SemanticColor::Success => Color::Rgb(98, 214, 130),
-        SemanticColor::Warning => Color::Rgb(242, 193, 76),
-        SemanticColor::Danger => Color::Rgb(238, 92, 92),
-    }
+const fn to_ratatui_color(color: RgbColor) -> Color {
+    Color::Rgb(color.red, color.green, color.blue)
 }
 
 fn to_ratatui_modifiers(modifiers: CellModifiers) -> Modifier {
@@ -63,7 +57,7 @@ mod tests {
     use ratatui::{buffer::Buffer, layout::Rect};
 
     use super::*;
-    use crate::{CellStyle, Display, GameCell, GridSize};
+    use crate::{CellStyle, Display, GameCell, GridSize, SemanticColor};
 
     #[test]
     fn adapter_copies_glyph_and_semantic_style() {
@@ -78,10 +72,39 @@ mod tests {
         );
         let mut target = Buffer::empty(Rect::new(0, 0, 1, 1));
 
-        copy_to_ratatui(&source, &mut target, GridPoint::new(0, 0));
+        copy_to_ratatui(
+            &source,
+            &mut target,
+            GridPoint::new(0, 0),
+            Palette::rcw_standard(),
+        );
 
         assert_eq!(target[(0, 0)].symbol(), "X");
         assert_eq!(target[(0, 0)].fg, Color::Rgb(242, 193, 76));
         assert!(target[(0, 0)].modifier.contains(Modifier::BOLD));
+    }
+
+    #[test]
+    fn adapter_applies_selected_palette() {
+        let mut source = DisplayBuffer::new(GridSize::new(1, 1));
+        source.put(
+            GridPoint::new(0, 0),
+            GameCell::new(
+                'X',
+                CellStyle::new(SemanticColor::Text, SemanticColor::Background),
+            )
+            .expect("test glyph is valid"),
+        );
+        let mut target = Buffer::empty(Rect::new(0, 0, 1, 1));
+
+        copy_to_ratatui(
+            &source,
+            &mut target,
+            GridPoint::new(0, 0),
+            Palette::high_contrast(),
+        );
+
+        assert_eq!(target[(0, 0)].fg, Color::Rgb(255, 255, 255));
+        assert_eq!(target[(0, 0)].bg, Color::Rgb(0, 0, 0));
     }
 }

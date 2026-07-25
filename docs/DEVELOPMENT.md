@@ -580,6 +580,16 @@ After each case verify:
 
 A terminal cleanup regression blocks release.
 
+The locally automated PTY subset runs through tmux:
+
+```bash
+./scripts/test-terminal-cleanup.sh
+```
+
+It verifies terminal settings after normal exit and an intentional debug-build
+panic, then exercises undersize suspension and explicit resize recovery inside
+tmux. SSH disconnect behavior remains a manual environment-dependent check.
+
 ---
 
 ## 16. Browser development

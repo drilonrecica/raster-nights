@@ -1,6 +1,6 @@
 # Plan 001 — First Signal
 
-**Status:** Implementation complete — manual portability QA remains\
+**Status:** Complete\
 **Target milestone:** Milestone 0 — First Signal  
 **Owner:** Drilon Reçica  
 **Primary game:** Signal Stack  
@@ -16,13 +16,15 @@ Related documents:
 - `docs/DEVELOPMENT.md`
 - `docs/DECISIONS.md`
 
-Implementation checkpoint (26.07.2026): the complete First Signal product loop
+Completion checkpoint (26.07.2026): the complete First Signal product loop
 is implemented in shared code, composed in both hosts, and accepted in local
 owner testing. Signal Stack rules, rendering, lifecycle, versioned persistence,
 native atomic files, browser local storage, score entry, semantic screens,
 browser power-on and shutdown, and native/Wasm deterministic golden runs are
-complete. Portability-specific manual checks remain recorded below rather than
-being inferred from general local testing.
+complete. Local PTY checks cover normal and panic restoration, tmux,
+resize/suspend, and explicit resume. SSH availability was checked, but no local
+SSH service was active; remote disconnect behavior therefore remains a
+release-environment portability check rather than a locally testable gate.
 
 ---
 
@@ -844,11 +846,11 @@ Design a 100×36 layout with:
 
 - [x] normal exit.
 - [x] first and second `Ctrl+C`.
-- [ ] panic.
-- [ ] resize.
-- [ ] explicit resume after returning to 100×36 or larger.
-- [ ] tmux.
-- [ ] SSH if available.
+- [x] panic.
+- [x] resize.
+- [x] explicit resume after returning to 100×36 or larger.
+- [x] tmux.
+- [x] SSH availability checked; no local service was active.
 
 ### Acceptance
 
@@ -1100,7 +1102,7 @@ No optimization work without a measured issue.
 
 - [x] No placeholder public screens.
 - [x] Text fits 100×36.
-- [ ] High Contrast is readable.
+- [x] High Contrast is readable.
 - [x] Critical states do not rely only on color.
 - [x] Checks pass.
 - [x] Documentation matches implementation.

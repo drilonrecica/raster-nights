@@ -63,7 +63,7 @@ exists; unavailable external environments are recorded honestly.
 - [ ] Migrate system state v1 to v2 while preserving valid v1 files and
       existing privacy, selection, mode, and tag values.
 - [ ] Persist Packet Sweep trace-revealed and unlocked state.
-- [ ] Add R/OS Standard, Amber, Green, Midnight VGA, High Contrast, and Paper
+- [x] Add R/OS Standard, Amber, Green, Midnight VGA, High Contrast, and Paper
       palette conversion in both hosts.
 - [ ] Complete settings for palette, reduced motion, quiet operation, and
       browser CRT effects that actually exist.
@@ -119,9 +119,10 @@ exists; unavailable external environments are recorded honestly.
 
 ## System, content, and website
 
-- [ ] Complete locally available Fedora First Signal QA: panic restoration,
+- [x] Complete locally available Fedora First Signal QA: panic restoration,
       resize/resume, tmux, and High Contrast.
-- [ ] Attempt local SSH QA only if an SSH service is already available.
+- [x] Attempt local SSH QA only if an SSH service is already available. No
+      local SSH service was active on 26.07.2026.
 - [ ] Add sanitized diagnostics without usernames, full paths, environment
       values, network activity, or automatic upload.
 - [ ] Add versioned catalog, manual, and archive content for the DRX-90/R/OS,
