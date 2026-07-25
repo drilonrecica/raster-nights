@@ -225,7 +225,10 @@ AfterHours is more colorful and welcoming than the R/OS shell but still belongs 
 - Studio Index
 - Release Timeline
 - Recently Played
-- System Files
+
+System Control and Command Prompt are AfterHours launcher destinations rather
+than catalog categories. System files are reached through the curated R/OS
+virtual filesystem.
 
 ---
 
@@ -782,7 +785,8 @@ Rules:
 
 - absent from public catalog;
 - absent from normal website game list;
-- referenced only through subtle traces;
+- discovered through subtle traces associated with Signal Stack;
+- launched as its own hidden software registration, not as a Signal Stack mode;
 - small but complete.
 
 ---

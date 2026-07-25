@@ -59,6 +59,7 @@ Then:
 - open Signal Stack details;
 - play Standard Transmission;
 - pause and resume;
+- resize below 100×36 and explicitly resume after restoring the minimum size;
 - reach game over;
 - enter a tag;
 - view a persisted score;
@@ -73,6 +74,7 @@ Then:
 - receive keyboard focus;
 - complete the same product loop;
 - lose focus and see the session pause;
+- explicitly resume after focus returns;
 - refresh and retain settings and scores.
 
 The native and browser simulations produce identical authoritative results for the same seed and timed actions.
@@ -94,7 +96,7 @@ The native and browser simulations produce identical authoritative results for t
 - website skeleton
 - simple scripts
 
-### Shared engine
+### Shared engine and display
 
 - identifiers
 - canonical 100×36 grid
@@ -126,6 +128,7 @@ The native and browser simulations produce identical authoritative results for t
 ### Browser host
 
 - Wasm initialization
+- `wasm-pack --target web` package generation
 - Ratzilla WebGL2
 - Canvas fallback
 - `requestAnimationFrame`
@@ -135,6 +138,7 @@ The native and browser simulations produce identical authoritative results for t
 - local browser storage
 - website `POWER ON`
 - display scaling
+- semantic accessibility mirror for implemented system screens
 - muted audio placeholder/no-op
 
 ### DRX-90 shell
@@ -246,9 +250,12 @@ Interfaces may leave room for later features, but do not implement speculative s
 - Stable Rust is available.
 - The browser target supports WebAssembly.
 - Ratzilla can provide WebGL2 and Canvas backends suitable for the canonical grid.
+- `wasm-pack --target web --no-pack` is the only Rust-to-browser packaging path;
+  do not introduce Trunk alongside Astro.
 - The final bundled web font can be selected later; use a verified temporary open-source font or system monospace during local development.
-- The exact package names may be adjusted, but crate responsibilities remain.
-- Signal Stack tuning is provisional during this milestone.
+- Signal Stack tuning is provisional until Milestone 0 acceptance, but changes
+  must update this plan and golden expectations. After persisted results exist,
+  incompatible rule changes increment the rules revision.
 - The project is not yet constrained by backward-compatible public save formats, but formats must still be versioned.
 
 ---
@@ -259,13 +266,19 @@ Interfaces may leave room for later features, but do not implement speculative s
 - No game rules in host crates.
 - Rendering does not mutate game state.
 - Authoritative game state uses integers/ticks.
-- The random generator is seeded and injected.
+- The run seed is injected. Games derive only documented deterministic
+  substreams from it.
 - Native and browser use the same `SignalStack` implementation.
 - Browser effects cannot change cell geometry.
 - Storage is accessed through repositories or traits.
+- `raster-engine` does not depend on `raster-games`, `raster-storage`, or
+  `raster-audio`; host applications compose and inject those implementations.
+- Grid and cell geometry types belong to `raster-display`; game IDs, lifecycle,
+  repository ports, and semantic UI types belong to `raster-engine`.
 - Terminal cleanup is handled by RAII.
 - No Tokio.
-- No network requests.
+- Native makes no outbound requests. Browser requests are limited to bundled
+  same-origin assets needed to load the site and Wasm application.
 - No plugin system.
 - No separate web game renderer.
 
@@ -296,7 +309,8 @@ raster-nights/
 └── docs/
 ```
 
-`raster-audio` may be introduced now as semantic no-op infrastructure or deferred until audio work. Prefer deferral unless boot/game events already need a stable abstraction.
+`raster-audio` is deferred. Milestone 0 uses the semantic audio sink port in
+`raster-engine` with a no-op host sink and does not create the audio crate.
 
 ---
 
@@ -309,10 +323,14 @@ raster-nights/
 - [ ] Add shared lint settings where appropriate.
 - [ ] Add `.gitignore`.
 - [ ] Add application and shared crates.
+- [ ] Add `rand_chacha` and `rand_core` only to `raster-games`, with unused
+      defaults disabled and MIT/Apache notices recorded.
 - [ ] Add website skeleton.
 - [ ] Add `scripts/check.sh`.
+- [ ] Configure ignored `wasm-pack` output for the website.
 - [ ] Confirm native workspace build.
-- [ ] Confirm Wasm target build.
+- [ ] Confirm `wasm-pack` browser build.
+- [ ] Confirm headless Wasm test execution.
 - [ ] Confirm website build.
 
 ### Acceptance
@@ -338,6 +356,10 @@ Add explicit newtypes/enums for:
 - [ ] `GameStatus`
 - [ ] `GameResult`
 - [ ] `ThreeCharacterTag`
+- [ ] `InputCapability`
+- [ ] host-independent `SemanticUiTree`, `SemanticNode`, stable IDs, roles,
+      states, and actions defined by `docs/ARCHITECTURE.md`
+- [ ] storage repository ports used by the application
 
 ### Requirements
 
@@ -345,6 +367,8 @@ Add explicit newtypes/enums for:
 - Avoid stringly typed game and mode logic.
 - Provide serialization where persisted.
 - Keep real semantic version separate from fictional version.
+- Keep persisted DTOs and migrations in `raster-storage`; do not make
+  `raster-engine` depend on the storage implementation crate.
 
 ---
 
@@ -390,6 +414,7 @@ Add explicit newtypes/enums for:
 - [ ] Define Signal Stack actions.
 - [ ] Implement pressed/held/released state.
 - [ ] Implement engine repeat timing.
+- [ ] Support enhanced and compatibility input capabilities.
 - [ ] Add arrow and HJKL defaults.
 - [ ] Add text-entry context.
 - [ ] Add `Esc` hierarchy.
@@ -401,6 +426,21 @@ Add explicit newtypes/enums for:
 - Native and browser mappings feed the same semantic actions.
 - Held movement does not depend on OS repeat.
 - Text entry does not interpret HJKL as navigation.
+- Enhanced mode uses exact release events.
+- Compatibility mode reports its limitations and expires held state without a
+  release event.
+
+### Compatibility hold contract
+
+- The first raw press produces one immediate pressed action.
+- A same-key press received within 60 simulation ticks arms a compatibility
+  hold lease with an initial duration of 12 ticks.
+- Each subsequent same-key press refreshes the lease to 12 ticks.
+- Once armed, semantic repeats use the action's engine-defined repeat profile;
+  raw repeat frequency never directly determines movement distance.
+- Lease expiry produces a logical release.
+- Fast repeated taps may be indistinguishable from a hold in compatibility mode;
+  this limitation is accepted and disclosed.
 
 ---
 
@@ -419,6 +459,7 @@ Implement:
 - [ ] `GameOver`
 - [ ] `TagEntry`
 - [ ] `Scores`
+- [ ] semantic tree for each implemented non-game state
 - [ ] `ResizeSuspended`
 - [ ] `Shutdown`
 - [ ] `FatalError`
@@ -461,7 +502,7 @@ Implement:
 - [ ] keyboard selection.
 - [ ] pointer selection.
 - [ ] software detail screen.
-- [ ] System Control placeholder only if functional enough.
+- [ ] omit System Control until it has a functional screen.
 
 ### Acceptance
 
@@ -486,6 +527,7 @@ Implement:
 
 - [ ] seven packet geometries.
 - [ ] four rotations where applicable.
+- [ ] exact revision-1 spawn and rotation tables.
 - [ ] deterministic shuffled bag.
 - [ ] five preview queue.
 - [ ] hold state.
@@ -503,11 +545,11 @@ Implement:
 
 ### Scoring
 
-- [ ] placement/drop points.
+- [ ] drop points.
 - [ ] channel clears.
 - [ ] signal chains.
 - [ ] sustained transmissions.
-- [ ] phase rotations where implemented.
+- [ ] phase rotations.
 - [ ] zero-state matrix.
 - [ ] score overflow policy.
 
@@ -522,6 +564,158 @@ Implement:
 - Model has no rendering or host dependencies.
 - Same seed produces same sequence.
 - Unit tests cover every packet near walls and floor.
+
+### Rules revision 1
+
+Standard Transmission begins with `RulesRevision(1)`.
+
+Coordinates use `x` increasing right and `y` increasing down. The matrix has
+columns `0..=9`, hidden rows `0..=3`, and visible rows `4..=23`.
+
+Spawn cells:
+
+| Packet | Cells |
+|---|---|
+| I | `(3,2) (4,2) (5,2) (6,2)` |
+| J | `(3,2) (3,3) (4,3) (5,3)` |
+| L | `(5,2) (3,3) (4,3) (5,3)` |
+| O | `(4,2) (5,2) (4,3) (5,3)` |
+| S | `(4,2) (5,2) (3,3) (4,3)` |
+| T | `(4,2) (3,3) (4,3) (5,3)` |
+| Z | `(3,2) (4,2) (4,3) (5,3)` |
+
+Orientation states are `0`, `R`, `2`, and `L`. JLSTZ use a 3×3 local box with
+spawn origin `(3,2)` and pivot `(1,1)`. I uses a 4×4 local box with spawn origin
+`(3,1)` and pivot `(1.5,1.5)`. Generate clockwise local geometry with
+`(dx,dy) -> (-dy,dx)` around the pivot; counterclockwise is the inverse. Store
+the resulting cells as explicit constant tables. O rotation is accepted as a
+no-op and does not reset lock delay.
+
+Kick candidates are tested in listed order using this document's positive-down
+coordinates:
+
+| JLSTZ transition | Candidate offsets |
+|---|---|
+| `0 -> R` | `(0,0) (-1,0) (-1,-1) (0,2) (-1,2)` |
+| `R -> 0` | `(0,0) (1,0) (1,1) (0,-2) (1,-2)` |
+| `R -> 2` | `(0,0) (1,0) (1,1) (0,-2) (1,-2)` |
+| `2 -> R` | `(0,0) (-1,0) (-1,-1) (0,2) (-1,2)` |
+| `2 -> L` | `(0,0) (1,0) (1,-1) (0,2) (1,2)` |
+| `L -> 2` | `(0,0) (-1,0) (-1,1) (0,-2) (-1,-2)` |
+| `L -> 0` | `(0,0) (-1,0) (-1,1) (0,-2) (-1,-2)` |
+| `0 -> L` | `(0,0) (1,0) (1,-1) (0,2) (1,2)` |
+
+| I transition | Candidate offsets |
+|---|---|
+| `0 -> R` | `(0,0) (-2,0) (1,0) (-2,1) (1,-2)` |
+| `R -> 0` | `(0,0) (2,0) (-1,0) (2,-1) (-1,2)` |
+| `R -> 2` | `(0,0) (-1,0) (2,0) (-1,-2) (2,1)` |
+| `2 -> R` | `(0,0) (1,0) (-2,0) (1,2) (-2,-1)` |
+| `2 -> L` | `(0,0) (2,0) (-1,0) (2,-1) (-1,2)` |
+| `L -> 2` | `(0,0) (-2,0) (1,0) (-2,1) (1,-2)` |
+| `L -> 0` | `(0,0) (1,0) (-2,0) (1,2) (-2,-1)` |
+| `0 -> L` | `(0,0) (-1,0) (2,0) (-1,-2) (2,1)` |
+
+Do not derive kick candidates through opaque arithmetic.
+
+Run behavior:
+
+- Fill the preview queue from a Fisher–Yates shuffled seven-packet bag.
+- A first hold stores the active packet and consumes the next preview. A swap
+  respawns the held packet in its spawn orientation and position.
+- Hold becomes available again only after the active packet locks.
+- Rate starts at 1 and advances after every ten cleared channels.
+- Score the current clear using the rate at the start of lock resolution, then
+  advance the rate if the new cleared-channel total crosses a ten-channel
+  boundary.
+- Gravity intervals, in ticks per row for rates 1–15, are
+  `48, 43, 38, 33, 28, 23, 18, 13, 8, 6, 5, 4, 3, 2, 1`; later rates remain at
+  one row per tick.
+- Soft drop attempts one row per tick. Hard drop moves to the lowest legal row
+  and locks immediately.
+- Lock delay is 30 ticks at rates 1–5, 24 at 6–10, 18 at 11–14, and 12 at 15
+  and above.
+- A packet receives at most 15 successful grounded movement or rotation resets.
+  Moving off the ground pauses the active lock timer but does not restore the
+  reset allowance.
+- After a lock and channel clear, any occupied hidden-row cell ends the run.
+  Failure to spawn a packet also ends the run.
+- The next packet spawns on the simulation tick after lock/clear resolution.
+
+Signal Stack repeat defaults are a 10-tick delayed auto-shift and a two-tick
+horizontal repeat interval.
+
+Scoring uses `u64` saturating arithmetic. Multiply clear values by the current
+rate:
+
+| Event | Base points |
+|---|---:|
+| One channel | 100 |
+| Two channels | 300 |
+| Three channels | 500 |
+| Four channels | 800 |
+| Phase rotation, no clear | 400 |
+| Phase rotation, one channel | 800 |
+| Phase rotation, two channels | 1200 |
+| Phase rotation, three channels | 1600 |
+
+- Soft drop adds one point per descended row; hard drop adds two.
+- A phase rotation requires the T packet, the last successful lateral/rotation
+  maneuver before lock to be a rotation, and at least three occupied or
+  out-of-bounds pivot-corner cells at lock. Gravity, soft drop, and hard-drop
+  translation do not clear the last-maneuver marker; successful lateral movement
+  does.
+- Four-channel clears and channel-clearing phase rotations are sustained
+  transmissions. Consecutive qualifying events multiply the later event's base
+  clear points by `3/2` using integer arithmetic. A nonqualifying channel clear
+  ends the sustained sequence; a lock with no clear leaves it unchanged.
+- Consecutive locks that clear at least one channel form a signal chain. The
+  first clear has chain index zero; later clears add
+  `50 × chain index × rate`. A lock with no clear resets the chain.
+- An empty matrix after clear resolution adds `2000 × rate`.
+
+Use `rand_chacha::ChaCha8Rng` for bag shuffling. Derive each bag independently
+from `(run seed, bag ordinal)` so authoritative state needs only the ordinal,
+current bag, and cursor rather than opaque RNG internals.
+
+Revision-1 seed derivation:
+
+1. Write `run_seed` and `bag_ordinal` as the first two little-endian `u64`
+   values of the 32-byte seed.
+2. Initialize `state = run_seed ^ bag_ordinal.rotate_left(32) ^
+   0x5349_4753_5441_434B` (`SIGSTACK`).
+3. For each of the two remaining output lanes:
+   - add `0x9E37_79B9_7F4A_7C15` to `state` with wrapping arithmetic;
+   - set `z = state`;
+   - set `z = (z ^ (z >> 30)) * 0xBF58_476D_1CE4_E5B9`;
+   - set `z = (z ^ (z >> 27)) * 0x94D0_49BB_1331_11EB`;
+   - set `z = z ^ (z >> 31)`;
+   - append `z` in little-endian order.
+
+All additions and multiplications wrap at 64 bits. Shuffle the canonical packet
+order `I,J,L,O,S,T,Z` with Fisher–Yates from index 6 down to 1. For bound
+`i + 1`, compute `range = 1u64 << 32` and
+`limit = range - (range % bound)`. Draw `u32` values directly through
+`rand_core::Rng::next_u32`,
+promote to `u64`, reject values greater than or equal to `limit`, and use
+`value % bound` as the swap index. Do not use a distribution helper whose
+sampling algorithm may change between dependency versions. The RNG algorithm,
+derivation, bounded sampling, and canonical order are part of the rules
+revision.
+
+State hashes use an explicit canonical little-endian field encoding and a
+project-owned FNV-1a 64-bit implementation with offset basis
+`14695981039346656037` and prime `1099511628211`.
+
+Encode, in order: rules revision; status; run seed; 240 row-major matrix cells;
+active packet/rotation/position; hold packet and availability; preview queue;
+current bag, cursor, and bag ordinal; score; cleared channels; rate; gravity
+counter; lock timer and reset count; last authoritative action; signal-chain
+index; sustained-transmission state; and pending spawn state. Use explicit enum
+tags, option-presence bytes, fixed-width integers, and length prefixes where
+needed. Never hash memory layouts, derive output from map iteration order, or
+use Rust's default hasher. The hash is a regression identifier, not a security
+primitive.
 
 ---
 
@@ -577,6 +771,8 @@ Design a 100×36 layout with:
 - One complete loop works without process restart.
 - Repeated restarts do not leak state.
 - Score record contains rules revision and mode.
+- Standard Transmission keeps ten records per rules revision.
+- Equal cutoff scores do not displace the older record.
 
 ---
 
@@ -595,6 +791,7 @@ Design a 100×36 layout with:
 - [ ] rename.
 - [ ] corrupt-file preservation.
 - [ ] data-directory override for development.
+- [ ] in-memory fallback with visible persistence warning.
 
 ### Browser
 
@@ -602,6 +799,7 @@ Design a 100×36 layout with:
 - [ ] quota/serialization error.
 - [ ] schema version.
 - [ ] reset.
+- [ ] in-memory fallback with visible persistence warning.
 
 ### Tests
 
@@ -628,6 +826,10 @@ Design a 100×36 layout with:
 - [ ] resize events.
 - [ ] frame loop.
 - [ ] panic hook.
+- [ ] enhanced keyboard capability detection.
+- [ ] keyboard enhancement restoration.
+- [ ] compatibility input mode.
+- [ ] centered-display pointer offset mapping.
 - [ ] shutdown.
 
 ### Manual cases
@@ -636,6 +838,7 @@ Design a 100×36 layout with:
 - [ ] first and second `Ctrl+C`.
 - [ ] panic.
 - [ ] resize.
+- [ ] explicit resume after returning to 100×36 or larger.
 - [ ] tmux.
 - [ ] SSH if available.
 
@@ -652,6 +855,7 @@ Shell is usable immediately after every tested exit path.
 - [ ] Canvas fallback.
 - [ ] animation frame loop.
 - [ ] power-on.
+- [ ] dynamic import only after `POWER ON`.
 - [ ] keyboard focus.
 - [ ] mouse coordinates to grid.
 - [ ] focus loss pause.
@@ -660,6 +864,7 @@ Shell is usable immediately after every tested exit path.
 - [ ] storage.
 - [ ] display scaling.
 - [ ] unsupported message.
+- [ ] semantic mirror for privacy, launcher, details, pause, game over, and tag entry.
 
 ### Acceptance
 
@@ -667,6 +872,7 @@ Shell is usable immediately after every tested exit path.
 - No automatic sound.
 - Full grid visible.
 - Same golden run as native.
+- Semantic and cell focus remain synchronized.
 
 ---
 
@@ -676,10 +882,10 @@ Shell is usable immediately after every tested exit path.
 - [ ] tagline.
 - [ ] `POWER ON DRX-90`.
 - [ ] terminal/SSH/tmux message.
-- [ ] install placeholder clearly marked as development until release.
+- [ ] explicit development-status installation notice with no fake command.
 - [ ] game catalog section for Signal Stack.
 - [ ] privacy statement.
-- [ ] source link placeholder.
+- [ ] source link to `https://github.com/drilonrecica/raster-nights`.
 - [ ] machine mount.
 - [ ] accessible normal page navigation.
 
@@ -701,6 +907,8 @@ The site remains useful when the Wasm application fails to load.
 - [ ] storage.
 - [ ] golden run native.
 - [ ] golden run Wasm.
+- [ ] enhanced and compatibility input.
+- [ ] semantic tree and browser mirror.
 - [ ] snapshots.
 
 ### CI
@@ -709,7 +917,8 @@ The site remains useful when the Wasm application fails to load.
 - [ ] Clippy
 - [ ] tests
 - [ ] workspace build
-- [ ] Wasm build
+- [ ] `wasm-pack` build
+- [ ] headless Wasm golden tests
 - [ ] website build
 
 ### Acceptance
@@ -735,10 +944,11 @@ CI is understandable from one workflow file or a very small set of workflows.
 13. Game session result
 14. Storage
 15. Host-specific polish
-16. Website
-17. Tests and CI hardening
-18. Manual QA
-19. Documentation synchronization
+16. Semantic browser mirror
+17. Website
+18. Tests and CI hardening
+19. Manual QA
+20. Documentation synchronization
 
 Do not build the full boot before both hosts can render the test grid.
 
@@ -762,6 +972,8 @@ Do not build storage before the result and settings schemas are clear.
 - tag validation;
 - app transitions;
 - input repeat;
+- enhanced and compatibility input;
+- semantic tree generation;
 - clock;
 - storage parsing.
 
@@ -827,6 +1039,7 @@ No optimization work without a measured issue.
 |---|---|
 | Ratzilla glyph or backend mismatch | Restrict glyph inventory; Canvas fallback; adapter boundary |
 | Native/browser input divergence | Normalize actions and test mappings |
+| Legacy terminals lack release events | Capability tiers, compatibility hold lease, and visible diagnostics |
 | Terminal not restored after panic | RAII guard and panic-path manual tests |
 | Signal Stack rules become too large | Limit Milestone 0 to canonical mode |
 | Boot polish delays engine | Render test grid in both hosts before full boot |
@@ -866,10 +1079,12 @@ No optimization work without a measured issue.
 
 ### Safety
 
-- [ ] No network requests.
+- [ ] Native makes no outbound requests.
+- [ ] Browser makes no requests beyond bundled same-origin application assets.
 - [ ] No analytics.
 - [ ] Terminal cleanup works.
 - [ ] Resize freezes state.
+- [ ] Resize recovery requires explicit resume.
 - [ ] Browser focus loss freezes state.
 - [ ] Corrupt score file does not erase settings.
 

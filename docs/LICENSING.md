@@ -29,7 +29,9 @@ This includes original:
 - source code for tooling;
 - source code for tests.
 
-The final repository must include the full MPL-2.0 license text before public release.
+The repository includes the full MPL-2.0 text in the root `LICENSE` file.
+Covered source files must still carry an applicable notice, such as an SPDX
+identifier, so the intended coverage is unambiguous.
 
 ### General technical documentation
 
@@ -47,7 +49,10 @@ This may include:
 - generic technical diagrams;
 - testing guidance.
 
-Documents that contain substantial fictional narrative or reserved branding may be excluded or dual-labeled more restrictively.
+Documents that contain substantial fictional narrative, product direction, or
+reserved branding are excluded unless an individual file says otherwise.
+`DOCUMENT-LICENSES.md` is the file-level authority for Markdown in this
+repository.
 
 ### Reserved creative material
 
@@ -366,10 +371,14 @@ LICENSE                  MPL-2.0 full text
 NOTICE                   project and third-party notices
 ASSET-LICENSES.md        asset-by-asset licensing
 TRADEMARKS.md            fork and identity policy
+DOCUMENT-LICENSES.md     Markdown file license map
 docs/LICENSING.md        explanatory policy
 ```
 
-Only `docs/LICENSING.md` is included in this specification package. The legal files should be created after the policy is finalized.
+`LICENSE` and `DOCUMENT-LICENSES.md` currently exist. `NOTICE`,
+`ASSET-LICENSES.md`, and `TRADEMARKS.md` remain required before the first public
+release. Do not create empty compliance files merely to satisfy the filename
+list; add them when their content is accurate.
 
 ---
 

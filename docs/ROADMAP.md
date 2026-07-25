@@ -73,7 +73,8 @@ This works in native terminal and browser.
 - safe normal and panic terminal cleanup;
 - resize suspension;
 - browser focus suspension;
-- no network requests;
+- no native outbound requests or browser requests beyond bundled same-origin
+  application assets;
 - all checks pass.
 
 Detailed plan: `docs/plans/001-first-signal.md`
@@ -103,7 +104,7 @@ Release a complete small product, not a framework preview.
 - scoreboards;
 - tag entry;
 - mouse and keyboard;
-- basic touch;
+- basic landscape touch;
 - substantial manuals and canon;
 - privacy notice;
 - diagnostics;
@@ -132,7 +133,9 @@ Release a complete small product, not a framework preview.
 - website and browser build work;
 - no placeholder screens;
 - no known terminal corruption;
-- no hidden network activity.
+- no hidden network activity;
+- browser network behavior is limited to loading bundled same-origin assets;
+- release licensing and identity notices are complete.
 
 ---
 

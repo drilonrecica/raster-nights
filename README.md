@@ -36,9 +36,9 @@ The first public milestone, **Raster Nights 0.1 — System Preview**, is planned
 - **Signal Stack** as the first complete flagship game;
 - **Loopback** as a fast one-to-three-minute bonus game;
 - **Packet Sweep** as a hidden miniature game;
-- keyboard, mouse, and basic touch input;
+- keyboard, mouse, and basic landscape touch input;
 - SSH and tmux usability;
-- no analytics, accounts, automatic network activity, or backend services.
+- no analytics, accounts, background application network activity, or backend services.
 
 See `docs/ROADMAP.md` for milestone sequencing.
 
@@ -117,7 +117,7 @@ It includes:
 
 ### Hidden software
 
-- **Packet Sweep** — an undocumented miniature game concealed inside Signal Stack’s fiction.
+- **Packet Sweep** — a separate undocumented miniature game discovered through traces inside Signal Stack.
 
 The complete v1 target is four flagship games, three advertised bonus games, and one hidden game.
 
@@ -138,7 +138,8 @@ The complete v1 target is four flagship games, three advertised bonus games, and
    There is no plugin ecosystem or public game SDK. Games are compiled into the official application.
 
 5. **Local by default and by design.**  
-   No accounts, analytics, telemetry, automatic network requests, cloud saves, or hosted dependency in v1.
+   No accounts, analytics, telemetry, background application requests, cloud
+   saves, or hosted gameplay dependency in v1.
 
 6. **Fiction with discipline.**  
    The fictional computer, studios, manuals, release dates, and operating-system personality form a coherent canon.
@@ -160,6 +161,7 @@ The intended architecture uses:
 - Ratatui and Crossterm for the native terminal host;
 - Rust/WebAssembly and Ratzilla for the browser host;
 - WebGL2 as the preferred browser renderer with Canvas fallback;
+- `wasm-pack` for browser package generation and Wasm tests;
 - Astro, HTML, CSS, and minimal TypeScript for the surrounding website;
 - deterministic 60 Hz simulation;
 - integer or fixed-point authoritative game state;
@@ -188,7 +190,7 @@ The browser scales the complete grid to fit the available area. It may add subtl
 
 Raster Nights is intentionally local.
 
-The installed application does not:
+The native installed application does not:
 
 - create accounts;
 - track usage;
@@ -198,6 +200,11 @@ The installed application does not:
 - fetch games or manuals;
 - upload crashes;
 - load remote content during normal operation.
+
+The browser necessarily downloads the static website and bundled application
+assets when the page is opened or the DRX-90 is powered on. After loading, it
+does not send gameplay data or initiate telemetry, score, diagnostic, update, or
+remote-content requests.
 
 Settings, high scores, puzzle records, and remembered system state remain on the local device.
 
@@ -332,6 +339,7 @@ See `docs/LICENSING.md` for software, asset, and naming policies.
 
 ## Documentation map
 
+- `DOCUMENT-LICENSES.md` — file-level licensing for repository documentation
 - `AGENTS.md` — coding-agent rules and repository invariants
 - `docs/PRODUCT.md` — complete product requirements
 - `docs/ARCHITECTURE.md` — technical architecture and boundaries
@@ -350,13 +358,14 @@ See `docs/LICENSING.md` for software, asset, and naming policies.
 The intended licensing model is:
 
 - original software source: MPL-2.0;
-- general technical documentation: CC BY 4.0;
+- explicitly mapped technical documentation: CC BY 4.0;
 - logos, artwork, music, fictional manuals, game titles, studio identities, and fictional canon: reserved unless an explicit license states otherwise;
 - third-party assets: their respective licenses.
 
 The project name and fictional identity must not be used by forks to imply that they are official Raster Nights releases.
 
-See `docs/LICENSING.md` before redistributing the project.
+See `DOCUMENT-LICENSES.md` and `docs/LICENSING.md` before redistributing the
+project.
 
 ---
 

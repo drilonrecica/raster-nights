@@ -117,7 +117,11 @@ Owns:
 
 It may depend on:
 
-- shared crates;
+- `raster-engine`;
+- `raster-display`;
+- `raster-games`;
+- `raster-storage`;
+- `raster-audio` when introduced;
 - Ratatui;
 - Crossterm;
 - native-only filesystem and directory helpers;
@@ -142,7 +146,11 @@ Owns:
 
 It may depend on:
 
-- shared crates;
+- `raster-engine`;
+- `raster-display`;
+- `raster-games`;
+- `raster-storage`;
+- `raster-audio` when introduced;
 - Ratzilla;
 - `wasm-bindgen`;
 - selected `web-sys` APIs.
@@ -159,15 +167,22 @@ Owns:
 - launcher and software-detail state;
 - normalized global actions;
 - fixed-step clock concepts;
-- deterministic RNG service;
+- run-seed and deterministic substream-derivation types;
 - session state;
 - game lifecycle traits;
 - score/result envelope;
 - shared errors and identifiers;
+- storage repository port traits and domain records;
+- semantic audio event and sink interfaces;
+- host-independent semantic UI descriptions;
+- injected game-registry interfaces;
 - host-facing application API.
 
 It must not depend on:
 
+- `raster-games`;
+- `raster-storage`;
+- `raster-audio`;
 - Crossterm;
 - Ratzilla;
 - `web-sys`;
@@ -180,6 +195,7 @@ It must not depend on:
 Owns:
 
 - canonical grid size;
+- grid points, sizes, rectangles, and viewports;
 - project display façade;
 - cell, style, color, and modifier types or adapters;
 - drawing primitives;
@@ -219,30 +235,28 @@ It must not access platform APIs or storage directly.
 
 Owns:
 
-- platform-neutral storage traits;
-- persisted schema types;
+- persisted data-transfer and schema types;
 - format versions;
 - migrations;
 - atomic-write helpers where platform-independent;
 - corruption recovery policy;
-- score repository;
-- settings repository;
-- puzzle record repository;
 - in-memory test adapter.
 
-Native and browser adapters may live in their host crates if platform APIs are required.
+It implements repository ports defined by `raster-engine` and may depend on
+engine domain types. Native and browser adapters live in their host crates when
+platform APIs are required.
 
 ### 4.7 `raster-audio`
 
 Owns:
 
-- semantic audio events;
-- music state requests;
-- volume and mute settings;
-- no-op implementation;
-- mapping from game events to named cues.
+- no-op and host-neutral audio-sink implementations;
+- mapping semantic engine events to named assets or synthesis parameters;
+- shared volume and mute behavior that is not platform I/O.
 
-It does not perform native or browser playback directly unless an adapter can be isolated without contaminating shared code.
+Semantic audio events and the sink port live in `raster-engine`, preventing an
+engine/audio dependency cycle. Actual native or browser playback remains in host
+adapters.
 
 ### 4.8 `raster-testkit`
 
@@ -253,7 +267,7 @@ Owns:
 - input playback helpers;
 - golden-run runner;
 - display snapshot helpers;
-- fake storage;
+- fixtures around the `raster-storage` in-memory adapter;
 - fake audio sink;
 - state hash assertions;
 - common fixture builders.
@@ -262,21 +276,25 @@ Owns:
 
 ## 5. Dependency direction
 
-Allowed direction:
+Allowed compile-time direction:
 
 ```text
-apps/terminal ─┐
-               ├──> raster-engine
-apps/web ──────┘       │
-                       ├──> raster-display
-                       ├──> raster-games
-                       ├──> raster-storage
-                       └──> raster-audio
+raster-engine  -> raster-display
+raster-games   -> raster-engine, raster-display
+raster-storage -> raster-engine
+raster-audio   -> raster-engine
 
-raster-games ─────────> raster-engine types
-raster-games ─────────> raster-display
-raster-games ─────────> raster-audio event types
+apps/terminal  -> raster-engine, raster-display, raster-games,
+                  raster-storage, optional raster-audio
+apps/web       -> raster-engine, raster-display, raster-games,
+                  raster-storage, optional raster-audio
+
+raster-testkit -> shared crates needed by a test
 ```
+
+Arrows point from a dependent to its dependency. Host applications are the
+composition roots: they obtain registrations from `raster-games`, construct
+storage/audio adapters, and inject those implementations into `raster-engine`.
 
 Disallowed examples:
 
@@ -284,6 +302,9 @@ Disallowed examples:
 raster-games -> crossterm
 raster-games -> ratzilla
 raster-games -> web-sys
+raster-engine -> raster-games
+raster-engine -> raster-storage
+raster-engine -> raster-audio
 raster-engine -> native filesystem
 raster-display -> browser DOM
 raster-storage -> game-specific simulation logic
@@ -311,6 +332,7 @@ enum AppState {
     Paused(PauseState),
     GameOver(GameOverState),
     TagEntry(TagEntryState),
+    Scores(ScoresState),
     Shell(ShellState),
     Settings(SettingsState),
     Manual(ManualState),
@@ -410,7 +432,7 @@ Metadata must be sufficient for launcher, details, manuals, and result records.
 
 ### 7.2 Registry
 
-Use an explicit owner-maintained registry.
+Use an explicit owner-maintained registry supplied by the composition root.
 
 ```rust
 pub static GAMES: &[GameRegistration] = &[
@@ -427,6 +449,8 @@ pub static GAMES: &[GameRegistration] = &[
 Hidden software is registered separately and omitted from ordinary catalog queries.
 
 No linker tricks, runtime discovery, plugin manifests, or build-script scanning.
+`raster-engine` operates on the injected registration slice and never imports
+`raster-games`.
 
 ---
 
@@ -446,6 +470,7 @@ Host adapters translate them into normalized device events:
 ```rust
 enum DeviceInput {
     KeyPressed(PhysicalKey),
+    KeyRepeated(PhysicalKey),
     KeyReleased(PhysicalKey),
     PointerMoved(GridPoint),
     PointerPressed(PointerButton, GridPoint),
@@ -489,6 +514,32 @@ struct HeldInput {
 ```
 
 This avoids OS-specific repeat timing.
+
+Hosts also report an input capability:
+
+```rust
+enum InputCapability {
+    Enhanced,
+    Compatibility,
+}
+```
+
+Enhanced mode provides distinct press, repeat, and release events. On Unix
+terminals, the native host requests Crossterm keyboard enhancement flags for
+event types and all-key escape reporting only after confirming support.
+
+Traditional terminal protocols report presses only. Compatibility mode:
+
+1. delivers the first raw press immediately;
+2. recognizes subsequent same-key presses as evidence that the key remains held;
+3. uses those events only to refresh a short hold lease;
+4. generates repeated semantic actions at engine-defined intervals;
+5. releases the logical key when its lease expires.
+
+Compatibility-mode constants are expressed in simulation ticks and covered by
+tests. This mode cannot guarantee exact key-up timing, simultaneous held keys, or
+the same analog precision as enhanced mode. These limitations are reported by
+`display-test`, while recorded normalized actions remain deterministic.
 
 ### Text entry
 
@@ -779,10 +830,11 @@ Order:
 2. create a restoration guard;
 3. enter alternate screen;
 4. enable raw mode;
-5. hide cursor;
-6. enable mouse capture where configured;
-7. clear display;
-8. start application loop.
+5. enable supported keyboard enhancements;
+6. hide cursor;
+7. enable mouse capture where configured;
+8. clear display;
+9. start application loop.
 
 If initialization fails, restore any already-applied state before returning an error.
 
@@ -793,7 +845,9 @@ Use an RAII guard that attempts to restore:
 - raw mode off;
 - alternate screen exit;
 - mouse capture off;
+- keyboard enhancement flags popped;
 - cursor visible;
+- line wrapping and other modified input/display modes restored;
 - terminal style reset.
 
 Install a panic hook that delegates to cleanup before presenting the panic report where practical.
@@ -840,6 +894,9 @@ raster-nights --no-effects
 
 Do not promise perfect capability detection.
 
+`display-test` reports `INPUT MODE: ENHANCED` or
+`INPUT MODE: COMPATIBILITY` and explains the compatibility limitations.
+
 ---
 
 ## 15. Browser host
@@ -858,7 +915,8 @@ The website owns:
 - surrounding accessibility semantics;
 - `POWER ON`;
 - fullscreen and mute controls;
-- Wasm loading error UI.
+- Wasm loading error UI;
+- the browser semantic accessibility mirror.
 
 Rust owns:
 
@@ -868,9 +926,20 @@ Rust owns:
 - settings UI;
 - input mapping;
 - canonical display;
-- local game state.
+- local game state;
+- host-independent semantic UI descriptions.
 
-### 15.2 Renderer selection
+### 15.2 Build and loading
+
+Build `apps/web` with `wasm-pack --target web --no-pack`. Generated JavaScript
+and WebAssembly artifacts go to the ignored `website/public/wasm/` directory and
+are served as static website assets.
+
+The website dynamically imports and initializes the generated module only after
+`POWER ON DRX-90`. Do not introduce Trunk as a second website build system.
+Development and CI scripts own the exact commands.
+
+### 15.3 Renderer selection
 
 Preferred order:
 
@@ -880,7 +949,7 @@ Preferred order:
 
 The DOM backend is not the standard active-game renderer.
 
-### 15.3 Animation loop
+### 15.4 Animation loop
 
 Use `requestAnimationFrame`.
 
@@ -894,7 +963,7 @@ On each callback:
 6. submit to Ratzilla;
 7. request next frame.
 
-### 15.4 Input focus
+### 15.5 Input focus
 
 Pressing `POWER ON` focuses the display.
 
@@ -905,11 +974,63 @@ The host shows:
 
 Browser-reserved shortcuts should not be aggressively blocked. Prevent default behavior only for keys actively used while the display is focused and where doing so does not interfere with critical browser controls.
 
-### 15.5 Touch
+### 15.6 Touch
 
 Touch events are translated into semantic actions. Hardware-styled controls are website or host overlays whose actions enter the same normalized input system.
 
-### 15.6 Audio
+Real-time gameplay requires a landscape viewport. Portrait mode may render the
+website and system screens but presents a rotate-device prompt before gameplay.
+It never crops the canonical grid.
+
+### 15.7 Semantic accessibility
+
+The shared application exposes a read-only semantic tree for supported screens.
+The browser host maps it to visually hidden native HTML controls and status
+regions.
+
+Minimum shared shape:
+
+```rust
+pub struct SemanticUiTree {
+    pub revision: u64,
+    pub root: SemanticNode,
+}
+
+pub struct SemanticNode {
+    pub id: SemanticId,
+    pub role: SemanticRole,
+    pub label: String,
+    pub value: Option<String>,
+    pub description: Option<String>,
+    pub state: SemanticState,
+    pub actions: Vec<SemanticActionKind>,
+    pub children: Vec<SemanticNode>,
+}
+
+pub struct SemanticEvent {
+    pub id: SemanticId,
+    pub command: SemanticCommand,
+}
+```
+
+`SemanticRole` initially covers application, dialog, heading, list, list item,
+button, status, text input, grid, row, and grid cell. `SemanticState` carries
+focused, selected, disabled, expanded, and live-region flags where relevant.
+Action kinds advertise activate, focus, increment, decrement, set text, and
+supported grid movement. `SemanticCommand` carries any text or direction
+payload. Stable `SemanticId` values allow the browser to update existing DOM
+nodes instead of replacing the entire tree.
+
+Requirements:
+
+- semantic and cell focus identify the same logical element;
+- DOM actions become normalized application actions;
+- state and validation remain in Rust;
+- updates are batched to avoid rebuilding unchanged nodes every frame;
+- real-time games are not required to expose every gameplay cell;
+- Bureau 9 exposes its board as an accessible grid.
+
+### 15.8 Audio
 
 Browser audio must initialize only after user interaction. Game code emits semantic events; the browser adapter owns actual playback.
 
@@ -918,6 +1039,10 @@ Browser audio must initialize only after user interaction. Game code emits seman
 ## 16. Storage architecture
 
 ### 16.1 Storage trait
+
+`raster-engine` defines the higher-level settings, score, puzzle-record, and
+system-state repository ports. `raster-storage` defines and implements the
+lower-level byte storage abstraction used by its codecs and adapters.
 
 Conceptual interface:
 
@@ -930,7 +1055,7 @@ pub trait Storage {
 }
 ```
 
-Higher-level repositories expose typed operations:
+Engine repository ports expose typed operations:
 
 ```rust
 trait SettingsRepository
@@ -982,6 +1107,11 @@ On parse failure:
 - restore defaults for the affected domain;
 - show a clear user message;
 - do not erase unrelated records.
+
+If storage initialization or a write fails, the application reports that
+persistence is unavailable and continues with an in-memory repository. The
+current session remains playable, but the UI must not imply that settings or
+scores were saved.
 
 ### 16.5 No live save states
 
@@ -1271,10 +1401,12 @@ Native:
 Web:
 
 - Wasm build;
+- headless Wasm execution of shared golden runs;
 - focus pause;
 - browser input mapping;
 - WebGL2-to-Canvas fallback logic;
 - browser persistence smoke test.
+- semantic-tree focus, action, and update behavior.
 
 ### 22.5 Content tests
 
@@ -1302,6 +1434,7 @@ clippy
 workspace tests
 workspace build
 wasm build
+headless Wasm golden tests
 website build
 ```
 
@@ -1406,7 +1539,7 @@ Examples requiring explicit decisions:
 
 ## 27. Initial implementation sequence
 
-The first vertical slice should proceed in this order:
+Milestone 0 should proceed in this order:
 
 1. workspace and shared identifiers;
 2. display façade and 100×36 buffer;
@@ -1421,12 +1554,13 @@ The first vertical slice should proceed in this order:
 11. Signal Stack rendering;
 12. pause, game over, tag entry;
 13. local settings and score repository;
-14. Loopback;
-15. hidden Packet Sweep;
-16. website integration;
-17. release archive and Homebrew flow.
+14. browser semantic mirror for implemented system screens;
+15. website integration and Wasm loading.
 
 See `docs/plans/001-first-signal.md` for detailed tasks and acceptance criteria.
+
+After Milestone 0, version 0.1 adds Loopback, hidden Packet Sweep, the complete
+website content, release archives, and Homebrew flow.
 
 ---
 

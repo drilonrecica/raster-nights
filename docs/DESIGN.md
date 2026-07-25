@@ -101,6 +101,10 @@ The browser:
 - may letterbox around the display;
 - never crops gameplay to increase text size.
 
+Portrait layouts keep the website and system screens usable. Real-time gameplay
+uses landscape orientation and presents a rotate-device prompt when the
+available portrait viewport cannot provide readable cells and controls.
+
 ### Safe areas
 
 Recommended layout zones:
@@ -445,13 +449,14 @@ Do not fake access to real private files or user behavior beyond locally stored 
 
 ## 11. Privacy notice design
 
-The first-run privacy notice is direct and not hidden in fiction.
+The first-run privacy notice is direct and not hidden in fiction. Its core
+wording is shared, followed by an accurate host-specific network statement.
 
 ```text
 ┌════════════════════ LOCAL SYSTEM NOTICE ════════════════════┐
 │                                                            │
-│ Raster Nights has no accounts, analytics, telemetry,       │
-│ advertising, or automatic network activity.                │
+│ Raster Nights has no accounts, analytics, telemetry or     │
+│ advertising. It sends no scores or gameplay data.          │
 │                                                            │
 │ Settings, puzzle records and high scores remain on         │
 │ this device.                                               │
@@ -459,6 +464,10 @@ The first-run privacy notice is direct and not hidden in fiction.
 │                         [ ENTER ] CONTINUE                  │
 └════════════════════════════════════════════════════════════┘
 ```
+
+Native states that the installed application makes no outbound requests.
+Browser states that browser play downloads the site and bundled application
+files. Both variants must fit the canonical dialog.
 
 R/OS framing is acceptable, but wording must remain unambiguous.
 
@@ -805,6 +814,18 @@ Controls screen shows actual current bindings, not hard-coded defaults.
 ### Mobile
 
 Hardware controls must not cover critical HUD or game regions.
+
+Real-time games use landscape controls. Portrait mode may show the website and
+system interface, but must prompt for rotation before gameplay rather than crop
+the grid.
+
+### Semantic browser mirror
+
+The Canvas/WebGL display has a synchronized, visually hidden semantic mirror for
+system navigation, settings, manuals, dialogs, and Bureau 9. Focus in the
+semantic mirror and focus shown in the cell UI refer to the same logical
+element. Semantic actions re-enter the shared normalized action path; the mirror
+does not implement parallel behavior.
 
 ---
 

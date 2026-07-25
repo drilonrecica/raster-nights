@@ -119,7 +119,9 @@ Only the owner adds official games and canon. There is no:
 
 Version 1 requires no backend service. The native and browser applications work with local content and local records.
 
-No accounts, analytics, telemetry, update checks, cloud saves, advertisements, or automatic network requests.
+No accounts, analytics, telemetry, update checks, cloud saves, advertisements,
+or background application requests. Browser delivery is limited to bundled
+same-origin site and application assets.
 
 ### 4.6 Fiction is coherent but subordinate to playability
 
@@ -329,21 +331,21 @@ The boot cannot be permanently removed through normal settings. Quiet mode and d
 
 ### 9.3 Launcher
 
-The default launcher is a keyboard-driven graphical software archive.
+The default launcher is a keyboard-driven graphical software archive. It is not
+a modern card grid and should resemble a period software catalog or
+operating-system UI.
 
-Primary catalog categories:
+Primary launcher destinations:
 
 - Featured Software
 - Shareware and Cover-Disk Archive
 - All Software
-- By Genre
-- By Studio
-- By Release Year
+- Genre Index
+- Studio Index
+- Release Timeline
 - Recently Played
 - System Control
 - Command Prompt
-
-The launcher is not a modern card grid. It should resemble period software catalog or operating-system UI.
 
 ### 9.4 Software detail screen
 
@@ -450,7 +452,20 @@ Pause is always available during normal gameplay.
 
 ### Held input
 
-The engine normalizes held-key behavior. It must not depend on operating-system repeat settings.
+The engine normalizes held-key behavior. Browser input and terminals supporting
+enhanced keyboard reporting provide exact press, repeat, and release events.
+
+Traditional terminal input reports presses only. On those terminals, a
+compatibility mode may use repeated press events only to refresh a short
+engine-owned hold lease. The engine still owns action-repeat cadence; operating
+system repeat frequency must not directly determine simulation movement.
+
+Compatibility mode must:
+
+- remain playable for every official game;
+- report its reduced multi-key and analog-input precision in `display-test`;
+- never claim exact release detection;
+- preserve deterministic simulation once normalized actions are produced.
 
 Actions track:
 
@@ -476,7 +491,7 @@ Keyboard operation remains complete.
 
 Touch controls are styled as fictional DRX-90 hardware.
 
-Full mobile support is expected for:
+Landscape mobile play is expected for:
 
 - Bureau 9;
 - Hazard Registry;
@@ -484,7 +499,13 @@ Full mobile support is expected for:
 - Loopback;
 - Relay Breaker.
 
-Mnemonic Nullway and Afterline 99 receive best-effort landscape controls. Their desktop keyboard experience remains authoritative, and mobile must not indefinitely block v1.
+Portrait mode supports the public website and system screens. Before entering a
+real-time game, it presents a clear rotate-device prompt rather than cropping the
+100×36 grid or shrinking controls over critical content.
+
+Mnemonic Nullway and Afterline 99 receive best-effort landscape controls. Their
+desktop keyboard experience remains authoritative, and mobile must not
+indefinitely block v1.
 
 ### Remapping
 
@@ -613,11 +634,22 @@ Score records should include, where relevant:
 
 Stored data must be versioned and migrated or recovered safely.
 
+If local storage cannot be opened or written, the application remains playable
+with in-memory state and shows a persistent, non-joking warning that settings
+and records will not survive the session. It must not report a score as saved
+when persistence failed.
+
 ---
 
 ## 14. Privacy requirements
 
-Version 1 makes no automatic network requests.
+The native application makes no outbound network requests.
+
+Browser play necessarily downloads the static website, JavaScript glue,
+WebAssembly module, bundled font, and other bundled same-origin assets. These
+requests occur as part of opening the site or explicitly powering on the DRX-90.
+After those assets load, the browser application initiates no gameplay,
+telemetry, score, diagnostic, update, or remote-content requests.
 
 The installed application must not:
 
@@ -632,15 +664,27 @@ The installed application must not:
 - validate licenses online;
 - contact a leaderboard.
 
-First-run notice:
+First-run notice uses a shared core plus one host-specific clarification:
 
 ```text
 LOCAL SYSTEM NOTICE
 
-Raster Nights has no accounts, analytics, telemetry,
-advertising, or automatic network activity.
+Raster Nights has no accounts, analytics, telemetry or advertising.
+It does not send scores, diagnostics or gameplay data.
 
 Settings, puzzle records and high scores remain on this device.
+```
+
+Native adds:
+
+```text
+THE INSTALLED APPLICATION MAKES NO OUTBOUND NETWORK REQUESTS.
+```
+
+Browser adds:
+
+```text
+BROWSER PLAY DOWNLOADS ONLY THIS SITE AND ITS BUNDLED APPLICATION FILES.
 ```
 
 Diagnostics:
@@ -700,7 +744,22 @@ Accessibility must never be described as cheating. Records store a rules profile
 
 ### Screen readers
 
-Full screen-reader access to real-time cell games is not a v1 promise. The website, settings, menus, manuals, and Bureau 9 should use meaningful semantics where practical.
+Full screen-reader access to real-time cell games is not a v1 promise.
+
+The website uses ordinary semantic HTML. The browser host exposes a synchronized
+semantic mirror for:
+
+- privacy, boot-completion, and error dialogs;
+- launcher and software-detail navigation;
+- System Control and settings;
+- manuals;
+- pause, game-over, and score-entry dialogs;
+- Bureau 9's board and controls.
+
+This mirror is derived from shared application state and routes actions through
+the same normalized input path. It must not duplicate game rules in JavaScript.
+Native terminal screen-reader behavior remains dependent on the user's terminal
+and assistive technology and is documented as best effort.
 
 ---
 
@@ -773,7 +832,8 @@ Audio is attributed to the fictional **RCW V/A-16 Audio Array**, allowing period
 - deterministic shared simulation;
 - native and web parity;
 - substantial fictional content;
-- no network requests.
+- no native outbound requests and no browser requests beyond bundled
+  same-origin application assets.
 
 ### Included games
 
@@ -963,7 +1023,10 @@ Primary showcase racer:
 - Standard Transmission
 - Burst Calibration
 - Transmission Repair
-- Packet Sweep, hidden
+
+Packet Sweep is a separate hidden game. Signal Stack may contain its discovery
+hook, but Packet Sweep is not a Signal Stack mode and does not share Signal
+Stack score records.
 
 ### Presentation
 
@@ -1122,6 +1185,15 @@ Examples:
 - Bureau 9 per case and assistance profile
 - Afterline 99 per route, mode, craft, and difficulty where necessary
 
+Local scoreboards retain at most ten entries per ranking key. A ranking key
+includes the game, mode, rules revision, and every difficulty or assistance
+dimension that changes comparability.
+
+Signal Stack records sort by descending score. Equal scores preserve the older
+record first, so a new tie does not displace an existing cutoff record. A score
+qualifies when the board contains fewer than ten records or the new score ranks
+above the current cutoff.
+
 ### No global leaderboard in v1
 
 A public top-ten leaderboard is explicitly deferred. Any future leaderboard is a separate optional service and must not make local play dependent on a backend.
@@ -1198,7 +1270,7 @@ A tagged public release must satisfy:
 - local writes are safe;
 - terminal restoration works;
 - no known score corruption;
-- no hidden network requests.
+- no undisclosed or nonessential network requests.
 
 ### Cross-platform
 

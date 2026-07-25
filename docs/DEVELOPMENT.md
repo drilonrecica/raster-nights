@@ -88,6 +88,7 @@ Likely tools:
 
 - Rust toolchain and Cargo
 - `wasm32-unknown-unknown` target
+- `wasm-pack` for browser package generation and headless Wasm tests
 - Node.js for the website toolchain
 - Astro for the static website
 - a Wasm bundling/dev command selected by the web application
@@ -141,11 +142,14 @@ cargo fmt --check
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
 cargo build --workspace
-cargo build -p raster-web --target wasm32-unknown-unknown
+wasm-pack build apps/web --target web --no-pack --out-dir ../../website/public/wasm
+wasm-pack test --headless --chrome crates/raster-games
 npm --prefix website run build
 ```
 
-Adapt package names to the actual workspace. Keep the script authoritative.
+Generated files under `website/public/wasm/` are ignored build output. Adapt
+package names to the actual workspace, but keep `wasm-pack` as the single
+Rust-to-browser packaging path and keep the script authoritative.
 
 ### Native application
 
@@ -178,7 +182,7 @@ or:
 
 It should:
 
-- build or watch the Wasm application;
+- build or watch the Wasm application with `wasm-pack`;
 - run the Astro development server;
 - report a local URL;
 - surface Wasm build failures clearly.
@@ -574,6 +578,8 @@ Manual cases:
 - SSH disconnect where testable;
 - tmux detach/reattach;
 - startup failure after partial initialization.
+- enhanced keyboard input and release events;
+- compatibility-mode hold expiry;
 
 After each case verify:
 
@@ -581,6 +587,8 @@ After each case verify:
 - raw mode disabled;
 - alternate screen exited;
 - mouse capture disabled;
+- keyboard enhancement flags popped;
+- line wrapping and any other modified input mode restored;
 - shell input echo restored;
 - colors reset.
 
@@ -604,9 +612,11 @@ Test:
 - fullscreen;
 - mouse;
 - touch where relevant;
+- portrait rotate-device behavior;
 - responsive scaling;
 - unsupported small viewport message;
 - browser back/navigation behavior.
+- semantic mirror focus and actions for supported screens.
 
 Do not require a complex browser matrix for every commit. Use one primary browser in daily development and broader smoke tests before releases.
 
@@ -706,22 +716,24 @@ A target release procedure:
 3. Perform manual QA checklist.
 4. Update real version metadata.
 5. Update release notes and roadmap.
-6. Commit release preparation.
-7. Tag:
+6. Confirm `LICENSE`, `NOTICE`, `ASSET-LICENSES.md`, `TRADEMARKS.md`, and
+   `DOCUMENT-LICENSES.md` are accurate.
+7. Commit release preparation.
+8. Tag:
    ```bash
    git tag v0.1.0
    git push origin master --tags
    ```
-8. CI builds:
+9. CI builds:
    - macOS Apple Silicon archive;
    - macOS Intel archive;
    - Linux x86-64 GNU archive;
    - browser bundle;
    - SHA-256 checksums.
-9. CI creates draft or final GitHub release.
-10. Deploy website.
-11. Update Homebrew tap.
-12. Verify installation from published artifacts.
+10. CI creates draft or final GitHub release.
+11. Deploy website.
+12. Update Homebrew tap.
+13. Verify installation from published artifacts.
 
 No code signing or notarization.
 
@@ -811,7 +823,7 @@ Before marking a task complete:
 - [ ] Native and web implications are handled.
 - [ ] Terminal cleanup was not weakened.
 - [ ] Accessibility impact was considered.
-- [ ] No outbound network activity was added.
+- [ ] No native outbound or browser nonessential network activity was added.
 - [ ] Content matches canon.
 - [ ] Documentation is updated where needed.
 - [ ] Full or appropriate checks pass.

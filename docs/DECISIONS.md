@@ -244,13 +244,18 @@ Open source does not mean open creative governance.
 
 ---
 
-## ADR-014 — No network activity in v1
+## ADR-014 — No application network services in v1
 
 **Status:** Accepted
 
 ### Decision
 
-The installed application makes no outbound network requests.
+The native installed application makes no outbound network requests.
+
+Browser play may load the bundled same-origin static site, JavaScript,
+WebAssembly, fonts, and assets required to start. After loading, the browser
+application initiates no gameplay, telemetry, score, diagnostic, update, or
+remote-content requests.
 
 ### Consequences
 
@@ -403,6 +408,9 @@ Hidden:
 
 - Packet Sweep
 
+Packet Sweep is a separate hidden game registration. Signal Stack may contain
+its discovery hook, but Packet Sweep is not a Signal Stack mode.
+
 ### Consequences
 
 Eight total playable titles provide variety while preserving quality.
@@ -522,6 +530,10 @@ Presentational accessibility options preserve canonical eligibility. Mechanical 
 ### Consequences
 
 Accessibility is not framed as cheating, while records remain comparable.
+
+The browser provides a synchronized semantic mirror for non-real-time machine
+screens and Bureau 9. Full semantic representation of real-time cell gameplay
+is not required.
 
 ---
 
@@ -791,6 +803,108 @@ After stability, prioritize substantial new games, then deeper lore, polish, mob
 ### Consequences
 
 Do not convert the project into an account service or plugin platform merely because it gains attention.
+
+---
+
+## ADR-050 — Capability-tier terminal input
+
+**Status:** Accepted
+
+### Context
+
+Traditional terminal protocols do not report reliable key-release events, while
+some modern terminals support enhanced press, repeat, and release reporting.
+Exact held-key input therefore cannot be promised across ordinary SSH, tmux, and
+GNU Screen environments.
+
+### Decision
+
+Use enhanced input when supported. Otherwise use an explicit compatibility mode
+where repeated raw presses refresh a short engine-owned hold lease and the
+engine controls semantic repeat cadence.
+
+### Consequences
+
+Compatibility mode has reduced multi-key and analog precision but remains
+playable. `display-test` reports the active input mode. Keyboard enhancement
+state becomes part of panic-safe terminal restoration.
+
+### Reconsider when
+
+A broadly deployed terminal protocol provides reliable key state across all
+required environments.
+
+---
+
+## ADR-051 — Packet Sweep is a separate hidden game
+
+**Status:** Accepted
+
+### Decision
+
+Packet Sweep has its own registration, lifecycle, rules revision, and records.
+It is omitted from ordinary catalog queries and the normal website game list.
+Signal Stack may expose the discovery path.
+
+### Consequences
+
+Packet Sweep is not represented as a Signal Stack mode. Public source and
+technical documentation may name it; hidden describes the product experience,
+not secrecy from an open-source repository.
+
+---
+
+## ADR-052 — Real-time mobile gameplay is landscape-first
+
+**Status:** Accepted
+
+### Decision
+
+The public website and system screens remain usable in portrait. Real-time games
+require a readable landscape viewport and show a rotate-device prompt instead of
+cropping the 100×36 grid.
+
+### Consequences
+
+The fixed display invariant remains intact, and mobile controls do not obscure
+critical gameplay.
+
+---
+
+## ADR-053 — Semantic browser mirror for supported machine UI
+
+**Status:** Accepted
+
+### Decision
+
+Expose a host-independent semantic UI tree for system navigation, settings,
+manuals, dialogs, and Bureau 9. The browser maps it to synchronized native HTML
+semantics. Real-time games are not required to expose every gameplay cell.
+
+### Consequences
+
+Canvas/WebGL rendering remains canonical while key non-real-time experiences are
+available to browser assistive technology. JavaScript does not duplicate
+application or game rules.
+
+---
+
+## ADR-054 — Documentation licensing is explicit per file
+
+**Status:** Accepted policy direction; legal review advised before public release
+
+### Decision
+
+License explicitly identified technical documentation and implementation plans
+under CC BY 4.0. Reserve mixed creative, product-direction, canon, visual
+identity, roadmap, and marketing documents unless an individual file says
+otherwise.
+
+### Consequences
+
+A root documentation-license map identifies each Markdown file's treatment.
+The MPL-2.0 software license does not silently govern reserved creative
+documents.
 
 ---
 

@@ -92,7 +92,10 @@ Agents must preserve these constraints unless the owner explicitly changes them.
 
 ### Network and privacy
 
-- The installed application makes no outbound network requests in v1.
+- The native installed application makes no outbound network requests in v1.
+- Browser delivery may load only the bundled same-origin website and application
+  assets required to start. After loading, the browser application initiates no
+  gameplay, telemetry, score, diagnostic, update, or remote-content requests.
 - No analytics, telemetry, advertising, accounts, cloud saves, update checks, remote content, or automatic diagnostic uploads.
 - Settings, high scores, puzzle records, and system state are local.
 - Diagnostic reports are local and voluntary.
@@ -158,7 +161,9 @@ These invariants are mandatory.
    - Do not create separate native and browser layouts unless explicitly approved.
 
 8. **Terminal cleanup is safety-critical.**
-   - Raw mode, alternate screen, mouse capture, cursor visibility, and input state must be restored after normal exit and panic where reasonably possible.
+   - Raw mode, alternate screen, mouse capture, cursor visibility, keyboard
+     enhancement flags, line wrapping, and other modified input/display state
+     must be restored after normal exit and panic where reasonably possible.
 
 9. **Game behavior must be testable without a real terminal or browser.**
    - Core simulations and shared rendering must run in ordinary Rust tests.
@@ -315,7 +320,14 @@ Before adding one:
 
 ## 9. Input rules
 
-- The engine owns held-key state; do not rely on OS keyboard repeat.
+- The engine owns held-key state and semantic repeat cadence.
+- Use exact press/repeat/release events when the terminal supports enhanced
+  keyboard reporting.
+- Traditional press-only terminals use the documented compatibility hold lease.
+  Raw repeat events may refresh the lease but must not directly set gameplay
+  repeat speed.
+- Compatibility input must remain playable and must report its reduced
+  multi-key and analog precision honestly.
 - Track pressed, held, released, and held duration.
 - Arrow keys are primary navigation.
 - `H`, `J`, `K`, and `L` navigate globally when text entry is inactive.
@@ -331,6 +343,9 @@ Before adding one:
 - Native mouse may be used for menus and Bureau 9, but keyboard control remains complete.
 - Web launcher supports keyboard and mouse.
 - Touch controls look like DRX-90 hardware, not modern translucent mobile-game controls.
+- Real-time touch gameplay is landscape-first. Portrait mode may show the
+  website and system screens but must request rotation before gameplay rather
+  than crop the 100×36 grid.
 
 ---
 
