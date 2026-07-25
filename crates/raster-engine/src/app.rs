@@ -269,6 +269,20 @@ impl Application {
         }
     }
 
+    pub fn activate_semantic_node(&mut self, id: &SemanticId) {
+        match id.as_str() {
+            "privacy.continue" | "launcher.featured.signal-stack" => {
+                self.handle_action(AppAction::Confirm, ActionPhase::Pressed);
+            }
+            "details.return" => {
+                self.handle_action(AppAction::Back, ActionPhase::Pressed);
+            }
+            "system.return" => self.transition(AppState::Launcher),
+            "system.shutdown" | "interrupt.confirm" => self.begin_shutdown(false),
+            _ => {}
+        }
+    }
+
     pub fn update(&mut self, _step: SimulationStep) {
         match &mut self.state {
             AppState::ColdBoot(boot) => {
@@ -561,5 +575,20 @@ mod tests {
         let tree = app.semantic_tree();
         assert_eq!(tree.root.label, "AfterHours software archive");
         assert!(tree.root.children[0].children[0].state.focused);
+    }
+
+    #[test]
+    fn semantic_activation_uses_the_same_validated_transitions() {
+        let mut app = app();
+        app.activate_semantic_node(
+            &SemanticId::parse("privacy.continue").expect("test ID is valid"),
+        );
+        assert_eq!(app.state_kind(), AppStateKind::ColdBoot);
+
+        press(&mut app, AppAction::Confirm);
+        app.activate_semantic_node(
+            &SemanticId::parse("launcher.featured.signal-stack").expect("test ID is valid"),
+        );
+        assert_eq!(app.state_kind(), AppStateKind::SoftwareDetails);
     }
 }

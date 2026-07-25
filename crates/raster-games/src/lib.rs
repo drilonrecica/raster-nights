@@ -5,6 +5,9 @@
 #[cfg(all(test, target_arch = "wasm32"))]
 mod wasm_tests {
     use raster_display::{DISPLAY_HEIGHT, DISPLAY_WIDTH, DisplayBuffer, render_diagnostic_grid};
+    use raster_engine::{
+        ActionPhase, AppAction, AppStateKind, Application, CalendarDate, HostKind,
+    };
     use wasm_bindgen_test::{wasm_bindgen_test, wasm_bindgen_test_configure};
 
     wasm_bindgen_test_configure!(run_in_browser);
@@ -16,5 +19,21 @@ mod wasm_tests {
 
         assert_eq!(display.snapshot().size.width, DISPLAY_WIDTH);
         assert_eq!(display.snapshot().size.height, DISPLAY_HEIGHT);
+    }
+
+    #[wasm_bindgen_test]
+    fn shared_system_shell_runs_in_browser_wasm() {
+        let mut app = Application::new(HostKind::Browser, CalendarDate::new(25, 7, 2026), false);
+        let mut display = DisplayBuffer::canonical();
+
+        app.render(&mut display)
+            .expect("privacy notice should compose in Wasm");
+        app.handle_action(AppAction::Confirm, ActionPhase::Pressed);
+        app.handle_action(AppAction::Confirm, ActionPhase::Pressed);
+        app.render(&mut display)
+            .expect("launcher should compose in Wasm");
+
+        assert_eq!(app.state_kind(), AppStateKind::Launcher);
+        assert!(display.snapshot().character_grid().contains("SIGNAL STACK"));
     }
 }
