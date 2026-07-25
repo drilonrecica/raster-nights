@@ -1,6 +1,6 @@
 # Plan 001 — First Signal
 
-**Status:** Active  
+**Status:** Implementation complete — manual portability QA remains\
 **Target milestone:** Milestone 0 — First Signal  
 **Owner:** Drilon Reçica  
 **Primary game:** Signal Stack  
@@ -16,11 +16,13 @@ Related documents:
 - `docs/DEVELOPMENT.md`
 - `docs/DECISIONS.md`
 
-Implementation checkpoint (25.07.2026): the complete First Signal product loop
-is implemented in shared code and composed in both hosts. Signal Stack rules,
-rendering, lifecycle, versioned persistence, native atomic files, browser local
-storage, score entry, semantic screens, and native/Wasm deterministic golden
-runs are complete. Manual platform QA and final acceptance review remain.
+Implementation checkpoint (26.07.2026): the complete First Signal product loop
+is implemented in shared code, composed in both hosts, and accepted in local
+owner testing. Signal Stack rules, rendering, lifecycle, versioned persistence,
+native atomic files, browser local storage, score entry, semantic screens,
+browser power-on and shutdown, and native/Wasm deterministic golden runs are
+complete. Portability-specific manual checks remain recorded below rather than
+being inferred from general local testing.
 
 ---
 

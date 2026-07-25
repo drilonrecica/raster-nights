@@ -24,10 +24,12 @@ The official game catalog, fictional canon, art direction, names, music, and roa
 
 ## Project status
 
-Raster Nights is in active implementation. The shared display, deterministic
-clock and input foundation, privacy and boot flow, minimal AfterHours launcher,
-native host, browser host, semantic accessibility mirror, and website shell are
-working. Signal Stack gameplay and persistence are not yet implemented.
+Raster Nights is in active implementation. The complete **First Signal**
+vertical slice now runs in both hosts: privacy and boot flow, the AfterHours
+launcher, deterministic Signal Stack Standard Transmission, pause and game-over
+handling, three-character score entry, versioned local persistence, shutdown,
+and the browser accessibility mirror. Release packaging and the remaining 0.1
+catalog are not yet complete.
 
 The first public milestone, **Raster Nights 0.1 — System Preview**, is planned to include:
 
@@ -254,11 +256,14 @@ tmux new -s raster-nights
 raster-nights
 ```
 
-A fast direct launch may look like:
+A fast direct-launch command is planned for 0.1:
 
 ```bash
 raster-nights play loopback --quick
 ```
+
+It is not available in the current First Signal build; launch the application
+normally and select installed software through AfterHours.
 
 tmux or GNU Screen is responsible for preserving a live process after a disconnected SSH client. Raster Nights does not serialize arbitrary mid-game state in v1.
 

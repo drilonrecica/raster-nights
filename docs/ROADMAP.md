@@ -22,6 +22,8 @@ This roadmap communicates sequence and scope without promising calendar dates. I
 
 ## 2. Milestone 0 — First Signal
 
+**Status:** Implementation complete; release-platform verification remains
+
 ### Purpose
 
 Prove the shared architecture before public 0.1 scope is complete.
@@ -35,7 +37,7 @@ power on
 → see privacy notice
 → boot DRX-90
 → open launcher
-→ start early Signal Stack
+→ start Signal Stack Standard Transmission
 → play
 → pause
 → lose

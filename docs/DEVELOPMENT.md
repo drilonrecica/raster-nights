@@ -141,7 +141,7 @@ The repository should provide simple scripts rather than requiring agents to rem
 Expected checks:
 
 ```bash
-cargo fmt --check
+cargo fmt --all --check
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
 cargo build --workspace
@@ -163,48 +163,46 @@ cargo run -p raster-terminal
 Examples:
 
 ```bash
-cargo run -p raster-terminal -- play signal-stack
-cargo run -p raster-terminal -- play loopback --quick
 cargo run -p raster-terminal -- display-test
-cargo run -p raster-terminal -- validate-content
 ```
+
+The current CLI accepts the normal launcher and `display-test`. Direct game
+launch, quiet mode, and authored-content validation are planned 0.1 interfaces,
+not implemented commands.
 
 ### Web application and website
 
-The final command depends on implementation, but the desired developer experience is one command such as:
+Build the Wasm package before starting Astro:
 
 ```bash
+wasm-pack build apps/web \
+  --target web \
+  --no-pack \
+  --out-dir ../../website/public/wasm
+
+npm --prefix website ci
 npm --prefix website run dev
 ```
 
-or:
-
-```bash
-./scripts/dev-web.sh
-```
-
-It should:
-
-- build or watch the Wasm application with `wasm-pack`;
-- run the Astro development server;
-- report a local URL;
-- surface Wasm build failures clearly.
+Astro reports the local URL, normally `http://localhost:4321`. Rebuild the Wasm
+package after Rust changes. A combined watch script remains a future workflow
+improvement.
 
 ### Formatting
 
 ```bash
 cargo fmt
-npm --prefix website run format
 ```
 
-Only add a JavaScript formatter if it is actually configured.
+No JavaScript formatter is currently configured. Add one only when it removes
+more maintenance work than it creates.
 
 ### Focused testing
 
 ```bash
 cargo test -p raster-games signal_stack
 cargo test -p raster-storage
-cargo test -p raster-engine app_state
+cargo test -p raster-engine app::tests
 ```
 
 ### Benchmarks
@@ -225,26 +223,8 @@ cargo bench -p raster-games
 cargo run -p raster-terminal
 ```
 
-### Quiet run
-
-```bash
-cargo run -p raster-terminal -- --quiet
-```
-
-### Deterministic game seed
-
-```bash
-cargo run -p raster-terminal -- play signal-stack --seed 18421
-```
-
-### Debug overlay
-
-Debug overlays should require an explicit development feature or debug build:
-
-```bash
-cargo run -p raster-terminal --features devtools -- \
-  play afterline-99 --debug-overlay --seed 99
-```
+Quiet mode, direct deterministic seeds, and debug overlays are planned 0.1
+development interfaces. They are not accepted by the current CLI.
 
 ### Temporary isolated data
 
@@ -388,7 +368,7 @@ Keep in Rust:
 
 ### Validation command
 
-The project should provide:
+The planned 0.1 content pipeline should provide:
 
 ```bash
 raster-nights validate-content
@@ -516,6 +496,9 @@ play <game> --debug-overlay
 play <game> --show-hitboxes
 play <game> --show-state-hash
 ```
+
+These are target devtools interfaces, not commands supported by the current
+First Signal CLI. At present, use Rust tests and `display-test`.
 
 Devtools may show:
 
