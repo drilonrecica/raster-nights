@@ -3,7 +3,7 @@
 use serde::{Deserialize, Serialize};
 
 /// Quality of key transitions reported by a host.
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum InputCapability {
     Enhanced,
@@ -11,7 +11,7 @@ pub enum InputCapability {
 }
 
 /// Host-neutral physical key code.
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum KeyCode {
     ArrowLeft,
@@ -31,7 +31,9 @@ pub enum KeyCode {
 }
 
 /// Modifier state attached to a physical key.
-#[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize, Deserialize,
+)]
 pub struct KeyModifiers {
     pub control: bool,
     pub alt: bool,
@@ -39,10 +41,25 @@ pub struct KeyModifiers {
 }
 
 /// Host-neutral key identity.
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct PhysicalKey {
     pub code: KeyCode,
     pub modifiers: KeyModifiers,
+}
+
+/// Meaning assigned to keys by the active application state.
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub enum InputContext {
+    Navigation,
+    Gameplay,
+    TextEntry(TextEscapeBehavior),
+}
+
+/// `Esc` behavior for an active text editor.
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub enum TextEscapeBehavior {
+    Clear,
+    Back,
 }
 
 impl PhysicalKey {
@@ -128,6 +145,9 @@ pub enum AppAction {
     OpenShell,
     OpenSettings,
     Interrupt,
+    ClearText,
+    DeleteBackward,
+    DeleteForward,
     TextInput(char),
     Game(GameAction),
 }
