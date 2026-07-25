@@ -19,8 +19,9 @@ Related documents:
 Implementation checkpoint (25.07.2026): repository foundation, shared domain
 types, canonical display, deterministic clock, normalized input, diagnostic
 native/web hosts, website shell, and CI validation are complete. The next
-vertical slice starts with the top-level application state machine; the full
-First Signal product loop remains in progress.
+vertical slice delivered the shared privacy, boot, launcher, software-details,
+system-menu, resize, interrupt, fatal-error, and shutdown flow in both hosts.
+Signal Stack gameplay and persistence remain in progress.
 
 ---
 
@@ -454,21 +455,21 @@ Add explicit newtypes/enums for:
 
 Implement:
 
-- [ ] `PrivacyNotice`
-- [ ] `ColdBoot`
-- [ ] `WarmBoot`
-- [ ] `Launcher`
-- [ ] `SoftwareDetails`
+- [x] `PrivacyNotice`
+- [x] `ColdBoot`
+- [x] `WarmBoot`
+- [x] `Launcher`
+- [x] `SoftwareDetails`
 - [ ] `Loading`
 - [ ] `Playing`
 - [ ] `Paused`
 - [ ] `GameOver`
 - [ ] `TagEntry`
 - [ ] `Scores`
-- [ ] semantic tree for each implemented non-game state
-- [ ] `ResizeSuspended`
-- [ ] `Shutdown`
-- [ ] `FatalError`
+- [x] semantic tree for each implemented non-game state
+- [x] `ResizeSuspended`
+- [x] `Shutdown`
+- [x] `FatalError`
 
 ### Acceptance
 
@@ -482,33 +483,33 @@ Implement:
 
 ### Privacy notice
 
-- [ ] First-run state.
+- [x] First-run state.
 - [ ] Local acknowledgement.
-- [ ] Clear no-network wording.
+- [x] Clear no-network wording.
 
 ### Cold boot
 
-- [ ] RCW/DRX-90 card.
-- [ ] memory and device diagnostics.
-- [ ] real local date warning through host-provided clock snapshot.
-- [ ] one subtle NUL hint.
-- [ ] skip on input.
+- [x] RCW/DRX-90 card.
+- [x] memory and device diagnostics.
+- [x] real local date warning through host-provided clock snapshot.
+- [x] one subtle NUL hint.
+- [x] skip on input.
 
 ### Warm boot
 
-- [ ] abbreviated checks.
+- [x] abbreviated checks.
 - [ ] restore last selected item.
-- [ ] skip on input.
+- [x] skip on input.
 
 ### Launcher
 
-- [ ] Featured Software category.
-- [ ] Signal Stack entry.
-- [ ] unavailable/future entries may be omitted rather than shown as placeholders.
-- [ ] keyboard selection.
-- [ ] pointer selection.
-- [ ] software detail screen.
-- [ ] omit System Control until it has a functional screen.
+- [x] Featured Software category.
+- [x] Signal Stack entry.
+- [x] unavailable/future entries may be omitted rather than shown as placeholders.
+- [x] keyboard selection.
+- [x] pointer selection.
+- [x] software detail screen.
+- [x] omit System Control until it has a functional screen.
 
 ### Acceptance
 
@@ -835,13 +836,13 @@ Design a 100×36 layout with:
 - [x] enhanced keyboard capability detection.
 - [x] keyboard enhancement restoration.
 - [x] compatibility input mode.
-- [ ] centered-display pointer offset mapping.
+- [x] centered-display pointer offset mapping.
 - [x] shutdown.
 
 ### Manual cases
 
 - [x] normal exit.
-- [ ] first and second `Ctrl+C`.
+- [x] first and second `Ctrl+C`.
 - [ ] panic.
 - [ ] resize.
 - [ ] explicit resume after returning to 100×36 or larger.
@@ -863,9 +864,9 @@ Shell is usable immediately after every tested exit path.
 - [x] power-on.
 - [x] dynamic import only after `POWER ON`.
 - [x] keyboard focus.
-- [ ] mouse coordinates to grid.
-- [ ] focus loss pause.
-- [ ] hidden-tab pause.
+- [x] mouse coordinates to grid.
+- [x] focus loss pause.
+- [x] hidden-tab pause.
 - [ ] explicit resume.
 - [ ] storage.
 - [x] display scaling.
@@ -905,7 +906,7 @@ The site remains useful when the Wasm application fails to load.
 
 ### Tests
 
-- [ ] engine state transitions.
+- [x] engine state transitions.
 - [x] input.
 - [x] clock.
 - [x] display.

@@ -17,6 +17,9 @@ https://github.com/rustwasm/console_error_panic_hook
 crossterm — MIT
 https://github.com/crossterm-rs/crossterm
 
+js-sys — MIT OR Apache-2.0
+https://github.com/wasm-bindgen/wasm-bindgen
+
 rand_chacha and rand_core — MIT OR Apache-2.0
 https://github.com/rust-random/rand
 
@@ -32,6 +35,9 @@ https://github.com/serde-rs/json
 
 thiserror — MIT OR Apache-2.0
 https://github.com/dtolnay/thiserror
+
+time — MIT OR Apache-2.0
+https://github.com/time-rs/time
 
 unicode-width — MIT OR Apache-2.0
 https://github.com/unicode-rs/unicode-width
