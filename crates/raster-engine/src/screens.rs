@@ -8,7 +8,7 @@ use crate::{
     Application, CalendarDate, HostKind,
     app::{
         AppState, GameOverItem, GameOverState, PauseMenuItem, PauseReason, PauseState,
-        SystemMenuItem, TagEntryState,
+        SettingsMenuItem, SettingsState, SystemMenuItem, TagEntryState,
     },
 };
 
@@ -25,16 +25,39 @@ pub(crate) fn render(app: &Application, display: &mut dyn Display) -> Result<(),
         AppState::WarmBoot(boot) => {
             render_boot(display, app.date(), boot.elapsed_ticks, true)?;
         }
-        AppState::Launcher => render_launcher(display, app.persistence_warning())?,
-        AppState::SoftwareDetails => render_details(display, app.best_signal_stack_score())?,
-        AppState::Loading(_) => render_loading(display)?,
+        AppState::Launcher => render_launcher(
+            display,
+            &app.advertised_descriptors(),
+            app.selected_descriptor().as_ref(),
+            app.persistence_warning(),
+        )?,
+        AppState::SoftwareDetails => render_details(
+            display,
+            app.selected_descriptor().as_ref(),
+            app.best_selected_score(),
+            app.packet_trace_available(),
+        )?,
+        AppState::ManualIndex(selected) => {
+            render_manual_index(display, &app.manual_descriptors(), *selected)?
+        }
+        AppState::ManualDetail(id) => {
+            render_manual_detail(display, app.manual_descriptor(id).as_ref())?
+        }
+        AppState::TraceEntry(trace) => render_trace_entry(display, &trace.value)?,
+        AppState::Loading(request) => render_loading(
+            display,
+            app.selected_descriptor().as_ref(),
+            &request.game_id,
+        )?,
         AppState::Playing(session) => session.game.render(display)?,
         AppState::Paused(pause) => {
             pause.session.game.render(display)?;
             render_pause(display, pause)?;
         }
         AppState::Controls(_) => render_controls(display)?,
-        AppState::Settings(_) => render_settings(display, app.reduced_motion())?,
+        AppState::Settings(settings) => {
+            render_settings(display, settings, &app.settings(), app.host())?
+        }
         AppState::GameOver(game_over) => render_game_over(display, game_over)?,
         AppState::TagEntry(tag) => render_tag_entry(display, tag)?,
         AppState::Scores(scores) => render_scores(
@@ -175,6 +198,8 @@ fn render_boot(
 
 fn render_launcher(
     display: &mut dyn Display,
+    descriptors: &[crate::GameDescriptor],
+    current: Option<&crate::GameDescriptor>,
     persistence_warning: Option<&str>,
 ) -> Result<(), GlyphError> {
     frame(display, "AFTERHOURS SOFTWARE ARCHIVE")?;
@@ -187,24 +212,48 @@ fn render_launcher(
     horizontal_rule(display, 3)?;
     emphasized(display, 4, 6, "FEATURED SOFTWARE")?;
 
-    selected(
+    if descriptors.is_empty() {
+        selected(
+            display,
+            4,
+            9,
+            "> SIGNAL STACK             PUZZLE       21.11.1995",
+        )?;
+        muted(
+            display,
+            6,
+            11,
+            "Falling-packet transmission alignment / STANDARD TRANSMISSION",
+        )?;
+    }
+    for (index, descriptor) in descriptors.iter().enumerate() {
+        let row = 9 + index as u16 * 4;
+        let line = format!(
+            "{} {:<24} {:<12} {}",
+            if current.is_some_and(|item| item.id == descriptor.id) {
+                ">"
+            } else {
+                " "
+            },
+            descriptor.title.to_uppercase(),
+            format!("{:?}", descriptor.category).to_uppercase(),
+            descriptor
+                .fictional_release_date
+                .as_deref()
+                .unwrap_or("UNLISTED")
+        );
+        if current.is_some_and(|item| item.id == descriptor.id) {
+            selected(display, 4, row, &line)?;
+        } else {
+            text(display, 4, row, &line)?;
+        }
+        muted(display, 6, row + 2, &descriptor.premise)?;
+    }
+    text(
         display,
         4,
-        9,
-        "> SIGNAL STACK             PUZZLE       21.11.1995",
-    )?;
-    muted(
-        display,
-        6,
-        11,
-        "Falling-packet transmission alignment / STANDARD TRANSMISSION",
-    )?;
-    text(display, 4, 15, "OFFICIAL ARCHIVE INDEX: 1 PROGRAM")?;
-    muted(
-        display,
-        4,
-        17,
-        "Additional catalog software will appear when its program core is installed.",
+        20,
+        &format!("OFFICIAL ARCHIVE INDEX: {} PROGRAMS", descriptors.len()),
     )?;
     if persistence_warning.is_some() {
         warning(
@@ -214,27 +263,46 @@ fn render_launcher(
             "LOCAL STORAGE DEGRADED - RECORDS MAY NOT SURVIVE THIS SESSION",
         )?;
     }
-    status_line(display, "ENTER Details    ESC System")?;
+    status_line(display, "UP/DOWN Select    ENTER Details    ESC System")?;
     Ok(())
 }
 
-fn render_details(display: &mut dyn Display, best_score: Option<u64>) -> Result<(), GlyphError> {
+fn render_details(
+    display: &mut dyn Display,
+    descriptor: Option<&crate::GameDescriptor>,
+    best_score: Option<u64>,
+    trace_available: bool,
+) -> Result<(), GlyphError> {
+    let Some(descriptor) = descriptor else {
+        return render_fatal(display, "No software descriptor is available");
+    };
     frame(display, "AFTERHOURS / SOFTWARE DETAILS")?;
-    emphasized(display, 5, 4, "SIGNAL STACK")?;
+    emphasized(display, 5, 4, &descriptor.title.to_uppercase())?;
     text(
         display,
         5,
         6,
-        "Frankenberg Logic Bureau / Sara Circuitworks / 21.11.1995",
+        &format!(
+            "{} / {} / {}",
+            descriptor.fictional_developer,
+            descriptor.fictional_publisher,
+            descriptor
+                .fictional_release_date
+                .as_deref()
+                .unwrap_or("UNLISTED")
+        ),
     )?;
-    muted(
+    muted(display, 5, 9, &descriptor.premise)?;
+    let mode = descriptor
+        .modes
+        .first()
+        .map_or("UNAVAILABLE", |mode| mode.title.as_str());
+    text(
         display,
         5,
-        9,
-        "Route falling data packets through a saturated switching matrix.",
+        13,
+        &format!("MODE          {}", mode.to_uppercase()),
     )?;
-    text(display, 5, 13, "MODE          STANDARD TRANSMISSION")?;
-    text(display, 5, 15, "DIFFICULTY    STANDARD")?;
     text(
         display,
         5,
@@ -244,21 +312,110 @@ fn render_details(display: &mut dyn Display, best_score: Option<u64>) -> Result<
             |score| format!("LOCAL RECORD  {score:010}"),
         ),
     )?;
-    text(display, 5, 21, "MOVE          LEFT / RIGHT")?;
-    text(display, 5, 22, "ROTATE        UP / Z")?;
-    text(display, 5, 23, "DROP          DOWN / SPACE")?;
-    emphasized(display, 5, 28, "[ ENTER ] START STANDARD TRANSMISSION")?;
-    status_line(display, "ENTER Start    ESC Return to catalog")?;
+    for (index, control) in descriptor.controls.iter().take(4).enumerate() {
+        text(
+            display,
+            5,
+            21 + index as u16,
+            &format!(
+                "{:<14} {}",
+                control.label.to_uppercase(),
+                control.default_bindings.join(" / ")
+            ),
+        )?;
+    }
+    emphasized(
+        display,
+        5,
+        28,
+        &format!("[ ENTER ] START {}", mode.to_uppercase()),
+    )?;
+    if trace_available {
+        warning(display, 58, 28, "[ T ] RESIDUAL TRACE")?;
+        status_line(display, "ENTER Start    M Manual    T Trace    ESC Catalog")?;
+    } else {
+        status_line(display, "ENTER Start    M Manual    ESC Return to catalog")?;
+    }
     Ok(())
 }
 
-fn render_loading(display: &mut dyn Display) -> Result<(), GlyphError> {
+fn render_loading(
+    display: &mut dyn Display,
+    descriptor: Option<&crate::GameDescriptor>,
+    game_id: &crate::GameId,
+) -> Result<(), GlyphError> {
     frame(display, "AFTERHOURS PROGRAM LOADER")?;
-    emphasized(display, 35, 13, "SIGNAL STACK VERSION 1.4")?;
-    text(display, 31, 17, "VERIFYING TRANSMISSION TABLES ........ OK")?;
-    text(display, 31, 19, "ALLOCATING CHANNEL MATRIX ............ OK")?;
+    let title = descriptor.filter(|item| item.id == *game_id).map_or_else(
+        || game_id.to_string(),
+        |item| format!("{} VERSION {}", item.title, item.fictional_version),
+    );
+    emphasized(display, 35, 13, &title.to_uppercase())?;
+    text(display, 31, 17, "VERIFYING PROGRAM TABLES ............. OK")?;
+    text(display, 31, 19, "ALLOCATING DISPLAY GRID .............. OK")?;
     muted(display, 34, 24, "PLEASE KEEP THE ARCHIVE DOOR CLOSED")?;
     status_line(display, "Loading local program core")?;
+    Ok(())
+}
+
+fn render_manual_index(
+    display: &mut dyn Display,
+    manuals: &[crate::ManualDescriptor],
+    selected_index: usize,
+) -> Result<(), GlyphError> {
+    frame(display, "R/OS MANUAL INDEX")?;
+    emphasized(display, 5, 4, "INSTALLED SOFTWARE REFERENCES")?;
+    for (index, manual) in manuals.iter().enumerate() {
+        menu_item(
+            display,
+            7,
+            9 + index as u16 * 5,
+            &manual.title.to_uppercase(),
+            index == selected_index,
+        )?;
+        muted(display, 9, 11 + index as u16 * 5, &manual.subtitle)?;
+    }
+    status_line(display, "UP/DOWN Select    ENTER Open    ESC Catalog")?;
+    Ok(())
+}
+
+fn render_manual_detail(
+    display: &mut dyn Display,
+    manual: Option<&crate::ManualDescriptor>,
+) -> Result<(), GlyphError> {
+    let Some(manual) = manual else {
+        return render_fatal(display, "Requested manual is unavailable");
+    };
+    frame(display, "R/OS SOFTWARE MANUAL")?;
+    emphasized(display, 4, 3, &manual.title.to_uppercase())?;
+    muted(display, 4, 5, &manual.subtitle)?;
+    let mut row = 8;
+    for section in manual.sections.iter().take(4) {
+        emphasized(display, 4, row, &section.heading.to_uppercase())?;
+        row += 2;
+        if let Some(paragraph) = section.paragraphs.first() {
+            for line in wrap_text(paragraph, 88, 2) {
+                text(display, 6, row, &line)?;
+                row += 1;
+            }
+        }
+        row += 1;
+    }
+    status_line(display, "ESC Return to manual index")?;
+    Ok(())
+}
+
+fn render_trace_entry(display: &mut dyn Display, value: &str) -> Result<(), GlyphError> {
+    frame(display, "SIGNAL STACK / RESIDUAL TRACE")?;
+    panel(
+        display,
+        GridRect::new(20, 9, 60, 17),
+        SemanticColor::Warning,
+    )?;
+    warning(display, 29, 12, "NONSTANDARD TRACE CHANNEL DETECTED")?;
+    text(display, 29, 16, "ENTER DIAGNOSTIC TRACE CODE")?;
+    selected(display, 29, 19, &format!("> {value:<7}"))?;
+    muted(display, 29, 23, "ENTER Submit    ESC Clear / Return")?;
+    status_line(display, "Trace entry is local to this system")?;
     Ok(())
 }
 
@@ -319,24 +476,70 @@ fn render_controls(display: &mut dyn Display) -> Result<(), GlyphError> {
     Ok(())
 }
 
-fn render_settings(display: &mut dyn Display, reduced_motion: bool) -> Result<(), GlyphError> {
-    frame(display, "SIGNAL STACK / SETTINGS")?;
+fn render_settings(
+    display: &mut dyn Display,
+    menu: &SettingsState,
+    settings: &crate::Settings,
+    host: HostKind,
+) -> Result<(), GlyphError> {
+    frame(display, "R/OS / SETTINGS")?;
     panel(
         display,
-        GridRect::new(20, 9, 60, 17),
+        GridRect::new(18, 6, 64, 24),
         SemanticColor::Primary,
     )?;
-    emphasized(display, 27, 13, "ACCESSIBILITY PROFILE")?;
-    selected(
-        display,
-        28,
-        18,
-        &format!(
-            "> REDUCED MOTION     {}",
-            if reduced_motion { "ON " } else { "OFF" }
+    emphasized(display, 25, 9, "LOCAL DISPLAY AND OPERATION")?;
+    let rows = [
+        (
+            SettingsMenuItem::Palette,
+            format!("DISPLAY PALETTE       {:?}", settings.display_palette).to_uppercase(),
         ),
+        (
+            SettingsMenuItem::ReducedMotion,
+            format!(
+                "REDUCED MOTION        {}",
+                if settings.reduced_motion { "ON" } else { "OFF" }
+            ),
+        ),
+        (
+            SettingsMenuItem::QuietOperation,
+            format!(
+                "QUIET OPERATION       {}",
+                if settings.quiet_operation {
+                    "ON"
+                } else {
+                    "OFF"
+                }
+            ),
+        ),
+        (
+            SettingsMenuItem::BrowserCrt,
+            format!(
+                "BROWSER CRT EFFECTS   {}{}",
+                if settings.crt_effects { "ON" } else { "OFF" },
+                if host == HostKind::Native {
+                    " (WEB ONLY)"
+                } else {
+                    ""
+                }
+            ),
+        ),
+    ];
+    for (index, (item, label)) in rows.iter().enumerate() {
+        menu_item(
+            display,
+            25,
+            13 + index as u16 * 3,
+            label,
+            menu.selected == *item,
+        )?;
+    }
+    muted(
+        display,
+        25,
+        27,
+        "UP/DOWN Select   ENTER Change   ESC Return",
     )?;
-    muted(display, 28, 22, "ENTER Toggle   ESC Return")?;
     status_line(display, "Settings are local to this device")?;
     Ok(())
 }
@@ -645,6 +848,27 @@ fn menu_item(
 
 fn text(display: &mut dyn Display, x: u16, y: u16, value: &str) -> Result<(), GlyphError> {
     display.text(GridPoint::new(x, y), value, style(SemanticColor::Text))
+}
+
+fn wrap_text(value: &str, width: usize, maximum_lines: usize) -> Vec<String> {
+    let mut lines = Vec::new();
+    let mut current = String::new();
+    for word in value.split_whitespace() {
+        if !current.is_empty() && current.len() + 1 + word.len() > width {
+            lines.push(std::mem::take(&mut current));
+            if lines.len() == maximum_lines {
+                return lines;
+            }
+        }
+        if !current.is_empty() {
+            current.push(' ');
+        }
+        current.push_str(word);
+    }
+    if !current.is_empty() && lines.len() < maximum_lines {
+        lines.push(current);
+    }
+    lines
 }
 
 fn emphasized(display: &mut dyn Display, x: u16, y: u16, value: &str) -> Result<(), GlyphError> {

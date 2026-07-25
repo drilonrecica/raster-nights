@@ -20,7 +20,8 @@ pub use domain::{
 };
 pub use game::{
     CatalogVisibility, ControlDescription, DirectLaunchRequest, Game, GameCategory, GameDescriptor,
-    GameError, GameRegistry, ModeDescriptor, NewRunRequest, RunMetadataSource, StartupOptions,
+    GameError, GameRegistry, ManualDescriptor, ManualSection, ModeDescriptor, NewRunRequest,
+    RunMetadataSource, StartupOptions,
 };
 pub use input::{
     AppAction, DeviceInput, GameAction, InputCapability, InputContext, KeyCode, KeyModifiers,

@@ -5,8 +5,8 @@ use std::collections::HashSet;
 use raster_display::{DISPLAY_SIZE, Display, GlyphError};
 use raster_engine::{
     ActionPhase, CatalogVisibility, ControlDescription, Game, GameCategory, GameDescriptor,
-    GameError, GameId, GameRegistry, GameResult, GameStatus, ModeDescriptor, ModeId, NewRunRequest,
-    RulesRevision, RunSeed, SimulationStep,
+    GameError, GameId, GameRegistry, GameResult, GameStatus, ManualDescriptor, ManualSection,
+    ModeDescriptor, ModeId, NewRunRequest, RulesRevision, RunSeed, SimulationStep,
 };
 use serde::Deserialize;
 use thiserror::Error;
@@ -18,12 +18,25 @@ use crate::{
 };
 
 const CATALOG_JSON: &str = include_str!("../../../content/catalog.json");
+const MANUALS_JSON: &str = include_str!("../../../content/manuals.json");
+const AUXILIARY_CONTENT: [(&str, &str); 6] = [
+    ("system", include_str!("../../../content/system.json")),
+    ("archive", include_str!("../../../content/archive.json")),
+    ("studios", include_str!("../../../content/studios.json")),
+    ("reviews", include_str!("../../../content/reviews.json")),
+    (
+        "filesystem",
+        include_str!("../../../content/filesystem.json"),
+    ),
+    ("nul", include_str!("../../../content/nul.json")),
+];
 const CATALOG_FORMAT_VERSION: u16 = 1;
 
 #[derive(Debug)]
 pub struct RasterGameRegistry {
     advertised: Vec<GameDescriptor>,
     hidden: Vec<GameDescriptor>,
+    manuals: Vec<ManualDescriptor>,
 }
 
 impl RasterGameRegistry {
@@ -33,7 +46,12 @@ impl RasterGameRegistry {
     }
 
     pub fn load() -> Result<Self, CatalogError> {
-        Self::from_json(CATALOG_JSON)
+        let mut registry = Self::from_json(CATALOG_JSON)?;
+        registry.manuals = parse_manuals(MANUALS_JSON, &registry.advertised)?;
+        for (name, json) in AUXILIARY_CONTENT {
+            validate_versioned_content(name, json)?;
+        }
+        Ok(registry)
     }
 
     pub fn validate_bundled_content() -> Result<(), CatalogError> {
@@ -67,7 +85,11 @@ impl RasterGameRegistry {
             }
         }
         validate_compiled_registration(&advertised, &hidden)?;
-        Ok(Self { advertised, hidden })
+        Ok(Self {
+            advertised,
+            hidden,
+            manuals: Vec::new(),
+        })
     }
 }
 
@@ -84,6 +106,10 @@ impl GameRegistry for RasterGameRegistry {
 
     fn hidden_descriptors(&self) -> Vec<GameDescriptor> {
         self.hidden.clone()
+    }
+
+    fn manual_descriptors(&self) -> Vec<ManualDescriptor> {
+        self.manuals.clone()
     }
 
     fn create(&self, game_id: &GameId) -> Result<Box<dyn Game>, GameError> {
@@ -401,6 +427,96 @@ struct ControlContent {
     default_bindings: Vec<String>,
 }
 
+#[derive(Debug, Deserialize)]
+struct ManualsFile {
+    format_version: u16,
+    manuals: Vec<ManualContent>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ManualContent {
+    id: GameId,
+    title: String,
+    subtitle: String,
+    sections: Vec<ManualSectionContent>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ManualSectionContent {
+    heading: String,
+    paragraphs: Vec<String>,
+}
+
+fn parse_manuals(
+    json: &str,
+    advertised: &[GameDescriptor],
+) -> Result<Vec<ManualDescriptor>, CatalogError> {
+    let file: ManualsFile =
+        serde_json::from_str(json).map_err(|error| CatalogError::InvalidJson(error.to_string()))?;
+    if file.format_version != CATALOG_FORMAT_VERSION {
+        return Err(CatalogError::UnsupportedVersion {
+            found: file.format_version,
+            supported: CATALOG_FORMAT_VERSION,
+        });
+    }
+    let mut ids = HashSet::new();
+    let mut manuals = Vec::new();
+    for manual in file.manuals {
+        if !ids.insert(manual.id.clone())
+            || !advertised.iter().any(|game| game.id == manual.id)
+            || manual.title.trim().is_empty()
+            || manual.subtitle.trim().is_empty()
+            || manual.sections.is_empty()
+            || manual.sections.iter().any(|section| {
+                section.heading.trim().is_empty()
+                    || section.paragraphs.is_empty()
+                    || section
+                        .paragraphs
+                        .iter()
+                        .any(|paragraph| paragraph.trim().is_empty())
+            })
+        {
+            return Err(CatalogError::InvalidManual(manual.id));
+        }
+        manuals.push(ManualDescriptor {
+            id: manual.id,
+            title: manual.title,
+            subtitle: manual.subtitle,
+            sections: manual
+                .sections
+                .into_iter()
+                .map(|section| ManualSection {
+                    heading: section.heading,
+                    paragraphs: section.paragraphs,
+                })
+                .collect(),
+        });
+    }
+    if manuals.len() != advertised.len() {
+        return Err(CatalogError::MissingManual);
+    }
+    Ok(manuals)
+}
+
+fn validate_versioned_content(name: &'static str, json: &str) -> Result<(), CatalogError> {
+    let value: serde_json::Value =
+        serde_json::from_str(json).map_err(|error| CatalogError::InvalidAuxiliaryContent {
+            name,
+            reason: error.to_string(),
+        })?;
+    if value
+        .get("format_version")
+        .and_then(serde_json::Value::as_u64)
+        != Some(u64::from(CATALOG_FORMAT_VERSION))
+    {
+        return Err(CatalogError::InvalidAuxiliaryContent {
+            name,
+            reason: "missing or unsupported format_version".to_owned(),
+        });
+    }
+    Ok(())
+}
+
 fn require_text(game_id: &GameId, field: &'static str, value: &str) -> Result<(), CatalogError> {
     if value.trim().is_empty() {
         Err(CatalogError::MissingText {
@@ -470,6 +586,12 @@ pub enum CatalogError {
     MissingControls(GameId),
     #[error("catalog game {0} has an invalid control binding")]
     InvalidControl(GameId),
+    #[error("bundled manual for {0} is invalid or does not match advertised software")]
+    InvalidManual(GameId),
+    #[error("bundled manuals do not cover every advertised game")]
+    MissingManual,
+    #[error("bundled {name} content is invalid: {reason}")]
+    InvalidAuxiliaryContent { name: &'static str, reason: String },
 }
 
 #[cfg(test)]
@@ -478,10 +600,10 @@ mod tests {
     use raster_display::DisplayBuffer;
     use raster_engine::{GameAction, RulesRevision};
 
-    fn request(seed: u64) -> NewRunRequest {
+    fn request(game: &str, mode: &str, seed: u64) -> NewRunRequest {
         NewRunRequest {
-            game_id: GameId::parse("signal-stack").expect("valid ID"),
-            mode_id: ModeId::parse("standard-transmission").expect("valid ID"),
+            game_id: GameId::parse(game).expect("valid ID"),
+            mode_id: ModeId::parse(mode).expect("valid ID"),
             rules_revision: RulesRevision::new(1).expect("valid revision"),
             seed: RunSeed(seed),
         }
@@ -497,6 +619,7 @@ mod tests {
         assert_eq!(descriptors[0].modes.len(), 1);
         assert_eq!(descriptors[1].id.as_str(), "loopback");
         assert_eq!(registry.hidden_descriptors()[0].id.as_str(), "packet-sweep");
+        assert_eq!(registry.manual_descriptors().len(), 2);
     }
 
     #[test]
@@ -518,23 +641,55 @@ mod tests {
     }
 
     #[test]
+    fn manual_validation_rejects_unknown_games_and_empty_sections() {
+        let advertised = RasterGameRegistry::from_json(CATALOG_JSON)
+            .expect("catalog")
+            .advertised;
+        let unknown = MANUALS_JSON.replace("\"id\": \"loopback\"", "\"id\": \"packet-sweep\"");
+        assert!(matches!(
+            parse_manuals(&unknown, &advertised),
+            Err(CatalogError::InvalidManual(_))
+        ));
+        let empty = MANUALS_JSON.replace("\"sections\": [", "\"sections\": [] , \"unused\": [");
+        assert!(parse_manuals(&empty, &advertised).is_err());
+    }
+
+    #[test]
     fn lifecycle_adapter_resets_updates_and_renders() {
         let registry = RasterGameRegistry::new();
-        let mut game = registry
-            .create(&request(7).game_id)
-            .expect("registered game");
-        game.reset(&request(7)).expect("valid request");
-        game.handle_action(GameAction::HardDrop, ActionPhase::Pressed)
-            .expect("action");
-        game.update(SimulationStep {
-            tick: raster_engine::SimulationTick(1),
-        })
-        .expect("update");
+        for (id, mode, title, action) in [
+            (
+                "signal-stack",
+                "standard-transmission",
+                "SIGNAL STACK",
+                GameAction::HardDrop,
+            ),
+            (
+                "loopback",
+                "quick-circuit",
+                "LOOPBACK",
+                GameAction::MoveDown,
+            ),
+            (
+                "packet-sweep",
+                "maintenance-run",
+                "PACKET SWEEP",
+                GameAction::MoveRight,
+            ),
+        ] {
+            let request = request(id, mode, 7);
+            let mut game = registry.create(&request.game_id).expect("registered game");
+            game.reset(&request).expect("valid request");
+            game.handle_action(action, ActionPhase::Pressed)
+                .expect("action");
+            game.update(SimulationStep {
+                tick: raster_engine::SimulationTick(1),
+            })
+            .expect("update");
 
-        let mut display = DisplayBuffer::canonical();
-        game.render(&mut display).expect("render");
-        let grid = display.snapshot().character_grid();
-        assert!(grid.contains("SIGNAL STACK"));
-        assert!(grid.contains("SCORE"));
+            let mut display = DisplayBuffer::canonical();
+            game.render(&mut display).expect("render");
+            assert!(display.snapshot().character_grid().contains(title));
+        }
     }
 }

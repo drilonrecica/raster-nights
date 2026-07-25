@@ -4,6 +4,37 @@
 
 pub mod storage;
 
+#[cfg(any(test, target_arch = "wasm32"))]
+use raster_engine::{ActionPhase, AppAction, GameAction};
+
+#[cfg(any(test, target_arch = "wasm32"))]
+fn parse_touch_action(action: &str) -> Option<AppAction> {
+    let action = match action {
+        "move-left" => GameAction::MoveLeft,
+        "move-right" => GameAction::MoveRight,
+        "move-up" => GameAction::MoveUp,
+        "move-down" => GameAction::MoveDown,
+        "rotate-clockwise" => GameAction::RotateClockwise,
+        "rotate-counterclockwise" => GameAction::RotateCounterclockwise,
+        "soft-drop" => GameAction::SoftDrop,
+        "hard-drop" => GameAction::HardDrop,
+        "hold" => GameAction::Hold,
+        "primary" => GameAction::Primary,
+        "secondary" => GameAction::Secondary,
+        _ => return None,
+    };
+    Some(AppAction::Game(action))
+}
+
+#[cfg(any(test, target_arch = "wasm32"))]
+fn parse_touch_phase(phase: &str) -> Option<ActionPhase> {
+    match phase {
+        "pressed" => Some(ActionPhase::Pressed),
+        "released" => Some(ActionPhase::Released),
+        _ => None,
+    }
+}
+
 #[cfg(target_arch = "wasm32")]
 mod browser {
     use std::{cell::RefCell, io, rc::Rc, time::Duration};
@@ -12,10 +43,10 @@ mod browser {
         DISPLAY_HEIGHT, DISPLAY_WIDTH, DisplayBuffer, GridPoint, copy_to_ratatui,
     };
     use raster_engine::{
-        Application, ApplicationRepository, CalendarDate, DeviceInput, FixedStepClock, HostKind,
-        InputCapability, InputSystem, KeyCode, KeyModifiers, LiveRegion, PhysicalKey,
-        PointerButton, RunMetadataSource, RunSeed, SemanticId, SemanticNode, SemanticRole,
-        SemanticUiTree,
+        ActionPhase, AppAction, Application, ApplicationRepository, CalendarDate, DeviceInput,
+        FixedStepClock, HostKind, InputCapability, InputSystem, KeyCode, KeyModifiers, LiveRegion,
+        PhysicalKey, PointerButton, RunMetadataSource, RunSeed, SemanticId, SemanticNode,
+        SemanticRole, SemanticUiTree,
     };
     use raster_games::RasterGameRegistry;
     use raster_storage::{InMemoryRepository, Repository};
@@ -47,6 +78,7 @@ mod browser {
     enum BrowserEvent {
         KeyActivity(Option<DeviceInput>),
         Device(DeviceInput),
+        Action(AppAction, ActionPhase),
         SemanticActivate(SemanticId),
     }
 
@@ -123,6 +155,17 @@ mod browser {
                     .fail(format!("display composition failed: {error}"));
                 let _ = self.app.render(&mut self.display);
             }
+            if let Ok(display) = browser_document().and_then(|document| {
+                document
+                    .get_element_by_id(DISPLAY_ELEMENT_ID)
+                    .ok_or_else(|| JsValue::from_str("DRX-90 display mount unavailable"))
+            }) {
+                if self.app.browser_crt_effects() {
+                    let _ = display.set_attribute("data-crt-enabled", "");
+                } else {
+                    let _ = display.remove_attribute("data-crt-enabled");
+                }
+            }
 
             let semantic_tree = self.app.semantic_tree();
             if self.rendered_semantic_revision != Some(semantic_tree.revision)
@@ -158,6 +201,7 @@ mod browser {
                     row,
                 }) => self.app.handle_pointer_press(column, row),
                 BrowserEvent::Device(device_input) => self.handle_device_input(device_input),
+                BrowserEvent::Action(action, phase) => self.app.handle_action(action, phase),
                 BrowserEvent::SemanticActivate(id) => self.app.activate_semantic_node(&id),
             }
         }
@@ -237,6 +281,26 @@ mod browser {
                 events.borrow_mut().push(BrowserEvent::SemanticActivate(id));
             }
         });
+    }
+
+    /// Enqueues a validated hardware-style touch transition.
+    #[wasm_bindgen]
+    pub fn touch_action(action: String, phase: String) -> bool {
+        let (Some(action), Some(phase)) = (
+            crate::parse_touch_action(&action),
+            crate::parse_touch_phase(&phase),
+        ) else {
+            return false;
+        };
+        EVENT_QUEUE.with(|queue| {
+            let Some(events) = queue.borrow().as_ref().cloned() else {
+                return false;
+            };
+            events
+                .borrow_mut()
+                .push(BrowserEvent::Action(action, phase));
+            true
+        })
     }
 
     fn run_renderer<B>(backend: B, runtime: Rc<RefCell<BrowserRuntime>>) -> Result<(), JsValue>
@@ -577,4 +641,25 @@ mod browser {
 }
 
 #[cfg(target_arch = "wasm32")]
-pub use browser::{semantic_activate, start};
+pub use browser::{semantic_activate, start, touch_action};
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn touch_boundary_accepts_only_documented_actions_and_phases() {
+        assert_eq!(
+            parse_touch_action("move-left"),
+            Some(AppAction::Game(GameAction::MoveLeft))
+        );
+        assert_eq!(
+            parse_touch_action("rotate-counterclockwise"),
+            Some(AppAction::Game(GameAction::RotateCounterclockwise))
+        );
+        assert_eq!(parse_touch_action("pause"), None);
+        assert_eq!(parse_touch_phase("pressed"), Some(ActionPhase::Pressed));
+        assert_eq!(parse_touch_phase("released"), Some(ActionPhase::Released));
+        assert_eq!(parse_touch_phase("cancelled"), None);
+    }
+}

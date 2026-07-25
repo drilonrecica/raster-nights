@@ -254,7 +254,6 @@ impl PacketSweep {
         self.packet
     }
 
-    #[must_use]
     pub fn errors(&self) -> impl Iterator<Item = ChecksumError> + '_ {
         self.errors.iter().flatten().copied()
     }
@@ -375,7 +374,7 @@ impl PacketSweep {
         }
         let ordinal = u64::from(self.error_count);
         let position = self.spawn_point(0x4552_524F_5253, ordinal);
-        let heading = match deterministic_value(self.seed, 0x4845_4144_494E_47, ordinal) % 4 {
+        let heading = match deterministic_value(self.seed, 0x0048_4541_4449_4E47, ordinal) % 4 {
             0 => Heading::Up,
             1 => Heading::Right,
             2 => Heading::Down,
@@ -413,6 +412,28 @@ impl PacketSweep {
         }
         Point::new(1, 1)
     }
+}
+
+/// Executes the cross-host revision-1 golden action stream.
+#[must_use]
+pub fn golden_run() -> StateHash {
+    let mut game = PacketSweep::new(RunSeed(0x0054_5241_4345_3930));
+    for tick in 1..=900 {
+        let actions: &[GameAction] = match tick % 37 {
+            0 => &[GameAction::MoveRight],
+            9 => &[GameAction::MoveDown],
+            18 => &[GameAction::MoveLeft],
+            27 => &[GameAction::MoveUp],
+            _ => &[],
+        };
+        for action in actions {
+            game.handle_action(*action);
+        }
+        game.update(SimulationStep {
+            tick: SimulationTick(tick),
+        });
+    }
+    game.state_hash()
 }
 
 #[must_use]
@@ -623,22 +644,8 @@ mod tests {
 
     #[test]
     fn golden_run_is_deterministic() {
-        let mut first = PacketSweep::new(RunSeed(0x5452_4143_4539_30));
-        let mut second = first.clone();
-        for tick in 1..=900 {
-            let actions: &[GameAction] = match tick % 37 {
-                0 => &[GameAction::MoveRight],
-                9 => &[GameAction::MoveDown],
-                18 => &[GameAction::MoveLeft],
-                27 => &[GameAction::MoveUp],
-                _ => &[],
-            };
-            step(&mut first, tick, actions);
-            step(&mut second, tick, actions);
-        }
-        assert_eq!(first.state_hash(), second.state_hash());
-        assert_eq!(first.score(), second.score());
-        assert_eq!(first.state_hash(), StateHash(3_340_492_426_130_267_100));
+        assert_eq!(golden_run(), golden_run());
+        assert_eq!(golden_run(), StateHash(3_340_492_426_130_267_100));
     }
 
     #[test]
@@ -667,5 +674,16 @@ mod tests {
         failed.status = PacketSweepStatus::Failed;
         render(&failed, &mut display).expect("failed render");
         assert!(display.snapshot().character_grid().contains("GAME OVER"));
+    }
+}
+
+#[cfg(all(test, target_arch = "wasm32"))]
+mod wasm_tests {
+    use super::*;
+    use wasm_bindgen_test::wasm_bindgen_test;
+
+    #[wasm_bindgen_test]
+    fn packet_sweep_golden_run_matches_native() {
+        assert_eq!(golden_run(), StateHash(3_340_492_426_130_267_100));
     }
 }

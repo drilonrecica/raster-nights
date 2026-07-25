@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: MPL-2.0
 
 use crate::{
-    ActionPhase, AppAction, ApplicationRepository, AssistanceProfileId, Game, GameRegistry,
-    GameResult, GameStatus, InputContext, LiveRegion, NewRunRequest, RunMetadataSource,
-    ScoreRecord, SemanticActionKind, SemanticId, SemanticNode, SemanticRole, SemanticState,
-    SemanticUiTree, Settings, SimulationStep, StartupOptions, SystemState, TextEscapeBehavior,
-    ThreeCharacterTag, insert_score, normalize_scores, ranked_scores, score_qualifies,
+    ActionPhase, AppAction, ApplicationRepository, AssistanceProfileId, Game, GameDescriptor,
+    GameRegistry, GameResult, GameStatus, InputContext, LiveRegion, NewRunRequest,
+    RunMetadataSource, ScoreRecord, SemanticActionKind, SemanticId, SemanticNode, SemanticRole,
+    SemanticState, SemanticUiTree, Settings, SimulationStep, StartupOptions, SystemState,
+    TextEscapeBehavior, ThreeCharacterTag, insert_score, normalize_scores, ranked_scores,
+    score_qualifies,
 };
 use raster_display::{Display, GlyphError};
 
@@ -48,6 +49,9 @@ pub enum AppStateKind {
     WarmBoot,
     Launcher,
     SoftwareDetails,
+    ManualIndex,
+    ManualDetail,
+    TraceEntry,
     Loading,
     Playing,
     Paused,
@@ -71,11 +75,14 @@ pub(crate) enum AppState {
     WarmBoot(BootState),
     Launcher,
     SoftwareDetails,
+    ManualIndex(usize),
+    ManualDetail(crate::GameId),
+    TraceEntry(TraceEntryState),
     Loading(NewRunRequest),
     Playing(GameSession),
     Paused(PauseState),
     Controls(PauseState),
-    Settings(PauseState),
+    Settings(SettingsState),
     GameOver(GameOverState),
     TagEntry(TagEntryState),
     Scores(ScoresState),
@@ -98,6 +105,29 @@ pub(crate) struct PauseState {
     pub(crate) session: GameSession,
     pub(crate) selected: PauseMenuItem,
     pub(crate) reason: PauseReason,
+}
+
+#[derive(Debug)]
+pub(crate) struct SettingsState {
+    pub(crate) pause: PauseState,
+    pub(crate) selected: SettingsMenuItem,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum SettingsMenuItem {
+    Palette,
+    ReducedMotion,
+    QuietOperation,
+    BrowserCrt,
+}
+
+impl SettingsMenuItem {
+    const ALL: [Self; 4] = [
+        Self::Palette,
+        Self::ReducedMotion,
+        Self::QuietOperation,
+        Self::BrowserCrt,
+    ];
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -148,6 +178,11 @@ pub(crate) struct TagEntryState {
     pub(crate) result: GameResult,
     pub(crate) tag: [u8; 3],
     pub(crate) cursor: usize,
+}
+
+#[derive(Debug)]
+pub(crate) struct TraceEntryState {
+    pub(crate) value: String,
 }
 
 #[derive(Debug)]
@@ -354,6 +389,9 @@ impl Application {
             AppState::WarmBoot(_) => AppStateKind::WarmBoot,
             AppState::Launcher => AppStateKind::Launcher,
             AppState::SoftwareDetails => AppStateKind::SoftwareDetails,
+            AppState::ManualIndex(_) => AppStateKind::ManualIndex,
+            AppState::ManualDetail(_) => AppStateKind::ManualDetail,
+            AppState::TraceEntry(_) => AppStateKind::TraceEntry,
             AppState::Loading(_) => AppStateKind::Loading,
             AppState::Playing(_) => AppStateKind::Playing,
             AppState::Paused(_) => AppStateKind::Paused,
@@ -378,6 +416,7 @@ impl Application {
         match self.state {
             AppState::Playing(_) => InputContext::Gameplay,
             AppState::TagEntry(_) => InputContext::TextEntry(TextEscapeBehavior::Back),
+            AppState::TraceEntry(_) => InputContext::TextEntry(TextEscapeBehavior::Clear),
             _ => InputContext::Navigation,
         }
     }
@@ -405,6 +444,13 @@ impl Application {
             .map_or_else(raster_display::Palette::rcw_standard, |runtime| {
                 runtime.settings.display_palette.resolve()
             })
+    }
+
+    #[must_use]
+    pub fn browser_crt_effects(&self) -> bool {
+        self.runtime
+            .as_ref()
+            .is_some_and(|runtime| runtime.settings.crt_effects)
     }
 
     pub fn handle_action(&mut self, action: AppAction, phase: ActionPhase) {
@@ -473,6 +519,17 @@ impl Application {
             self.handle_tag_action(action);
             return;
         }
+        if matches!(self.state, AppState::TraceEntry(_)) {
+            self.handle_trace_action(action);
+            return;
+        }
+        if matches!(
+            self.state,
+            AppState::ManualIndex(_) | AppState::ManualDetail(_)
+        ) {
+            self.handle_manual_action(action);
+            return;
+        }
         if matches!(self.state, AppState::Scores(_)) {
             self.handle_scores_action(action);
             return;
@@ -493,9 +550,12 @@ impl Application {
             AppState::Launcher => match action {
                 AppAction::Confirm => self.transition(AppState::SoftwareDetails),
                 AppAction::OpenScores => self.transition(AppState::Scores(ScoresState {
-                    key: signal_stack_ranking_key(),
+                    key: self.selected_ranking_key(),
                     saved: false,
                 })),
+                AppAction::NavigateUp | AppAction::NavigateLeft => self.cycle_launcher(false),
+                AppAction::NavigateDown | AppAction::NavigateRight => self.cycle_launcher(true),
+                AppAction::OpenManual => self.transition(AppState::ManualIndex(0)),
                 AppAction::Back => self.transition(AppState::SystemMenu(SystemMenuState {
                     selected: SystemMenuItem::Return,
                 })),
@@ -503,6 +563,8 @@ impl Application {
             },
             AppState::SoftwareDetails => match action {
                 AppAction::Confirm => self.begin_run(),
+                AppAction::OpenManual => self.open_selected_manual(),
+                AppAction::OpenTrace => self.open_trace(),
                 AppAction::Back => self.transition(AppState::Launcher),
                 _ => {}
             },
@@ -547,6 +609,9 @@ impl Application {
             | AppState::Settings(_)
             | AppState::GameOver(_)
             | AppState::TagEntry(_)
+            | AppState::TraceEntry(_)
+            | AppState::ManualIndex(_)
+            | AppState::ManualDetail(_)
             | AppState::Scores(_) => {}
             AppState::Transitioning => {
                 unreachable!("transition sentinel is never externally observable")
@@ -600,8 +665,19 @@ impl Application {
             return;
         }
         match &mut self.state {
-            AppState::Launcher if (7..=9).contains(&row) && (3..=68).contains(&column) => {
-                self.transition(AppState::SoftwareDetails);
+            AppState::Launcher if (3..=90).contains(&column) => {
+                let index = match row {
+                    9..=11 => Some(0),
+                    13..=15 => Some(1),
+                    _ => None,
+                };
+                if let Some(index) = index
+                    && let Some(runtime) = &mut self.runtime
+                    && let Some(descriptor) = runtime.registry.advertised_descriptors().get(index)
+                {
+                    runtime.system_state.last_selected_game = Some(descriptor.id.clone());
+                    self.transition(AppState::SoftwareDetails);
+                }
             }
             AppState::SystemMenu(menu) if (14..=20).contains(&row) => {
                 menu.selected = match row {
@@ -617,12 +693,38 @@ impl Application {
 
     pub fn activate_semantic_node(&mut self, id: &SemanticId) {
         match id.as_str() {
-            "privacy.continue" | "launcher.featured.signal-stack" | "details.start" => {
+            "privacy.continue" | "details.start" => {
                 self.handle_action(AppAction::Confirm, ActionPhase::Pressed);
+            }
+            value if value.starts_with("launcher.featured.") => {
+                let requested = &value["launcher.featured.".len()..];
+                if let Some(runtime) = &mut self.runtime
+                    && let Some(descriptor) = runtime
+                        .registry
+                        .advertised_descriptors()
+                        .into_iter()
+                        .find(|descriptor| descriptor.id.as_str() == requested)
+                {
+                    runtime.system_state.last_selected_game = Some(descriptor.id);
+                }
+                self.transition(AppState::SoftwareDetails);
+            }
+            value if value.starts_with("manuals.") => {
+                let requested = &value["manuals.".len()..];
+                if let Some(manual) = self
+                    .manual_descriptors()
+                    .into_iter()
+                    .find(|manual| manual.id.as_str() == requested)
+                {
+                    self.transition(AppState::ManualDetail(manual.id));
+                }
             }
             "details.return" => {
                 self.handle_action(AppAction::Back, ActionPhase::Pressed);
             }
+            "details.trace" => self.open_trace(),
+            "trace.submit" => self.handle_action(AppAction::Confirm, ActionPhase::Pressed),
+            "trace.return" => self.transition(AppState::SoftwareDetails),
             "privacy.return" => self.transition(AppState::Launcher),
             "system.return" => self.transition(AppState::Launcher),
             "system.privacy" => self.transition(AppState::PrivacyReview),
@@ -666,7 +768,19 @@ impl Application {
             "controls.return" => {
                 self.handle_action(AppAction::Back, ActionPhase::Pressed);
             }
-            "settings.reduced-motion" => {
+            "settings.palette"
+            | "settings.reduced-motion"
+            | "settings.quiet-operation"
+            | "settings.browser-crt" => {
+                if let AppState::Settings(settings) = &mut self.state {
+                    settings.selected = match id.as_str() {
+                        "settings.palette" => SettingsMenuItem::Palette,
+                        "settings.reduced-motion" => SettingsMenuItem::ReducedMotion,
+                        "settings.quiet-operation" => SettingsMenuItem::QuietOperation,
+                        "settings.browser-crt" => SettingsMenuItem::BrowserCrt,
+                        _ => unreachable!("semantic ID matched above"),
+                    };
+                }
                 self.handle_action(AppAction::Confirm, ActionPhase::Pressed);
             }
             "game-over.continue" | "game-over.restart" | "game-over.return" => {
@@ -775,23 +889,104 @@ impl Application {
                 "DRX-90 system boot",
                 vec![status("boot.status", "System diagnostics in progress")],
             ),
-            AppState::Launcher => (
-                "AfterHours software archive",
-                vec![list(
-                    "launcher.featured",
-                    "Featured software",
-                    vec![button(
+            AppState::Launcher => {
+                let mut games = self
+                    .advertised_descriptors()
+                    .into_iter()
+                    .map(|descriptor| {
+                        let selected = self
+                            .selected_descriptor()
+                            .is_some_and(|current| current.id == descriptor.id);
+                        button(
+                            &format!("launcher.featured.{}", descriptor.id),
+                            &format!(
+                                "{}, {:?} software released {}",
+                                descriptor.title,
+                                descriptor.category,
+                                descriptor
+                                    .fictional_release_date
+                                    .as_deref()
+                                    .unwrap_or("unlisted")
+                            ),
+                            selected,
+                        )
+                    })
+                    .collect::<Vec<_>>();
+                if games.is_empty() {
+                    games.push(button(
                         "launcher.featured.signal-stack",
                         "Signal Stack, puzzle software released 21.11.1995",
                         true,
-                    )],
-                )],
-            ),
-            AppState::SoftwareDetails => (
-                "Signal Stack software details",
-                vec![
-                    button("details.start", "Start Standard Transmission", true),
+                    ));
+                }
+                (
+                    "AfterHours software archive",
+                    vec![list("launcher.featured", "Featured software", games)],
+                )
+            }
+            AppState::SoftwareDetails => {
+                let mut actions = vec![
+                    button(
+                        "details.start",
+                        &format!(
+                            "Start {}",
+                            self.selected_descriptor()
+                                .and_then(|descriptor| descriptor.modes.first().cloned())
+                                .map_or_else(|| "program".to_owned(), |mode| mode.title)
+                        ),
+                        true,
+                    ),
                     button("details.return", "Return to catalog", false),
+                ];
+                if self.packet_trace_available() {
+                    actions.push(button(
+                        "details.trace",
+                        if self.packet_sweep_unlocked() {
+                            "Recall TRACE90 maintenance program"
+                        } else {
+                            "Enter residual trace code"
+                        },
+                        false,
+                    ));
+                }
+                ("Software details", actions)
+            }
+            AppState::ManualIndex(selected) => (
+                "R/OS manual index",
+                self.manual_descriptors()
+                    .into_iter()
+                    .enumerate()
+                    .map(|(index, manual)| {
+                        button(
+                            &format!("manuals.{}", manual.id),
+                            &format!("{}: {}", manual.title, manual.subtitle),
+                            index == *selected,
+                        )
+                    })
+                    .collect(),
+            ),
+            AppState::ManualDetail(id) => (
+                "Software manual",
+                self.manual_descriptor(id).map_or_else(Vec::new, |manual| {
+                    manual
+                        .sections
+                        .into_iter()
+                        .enumerate()
+                        .map(|(index, section)| {
+                            status(
+                                &format!("manual.section-{index}"),
+                                &format!("{}: {}", section.heading, section.paragraphs.join(" ")),
+                            )
+                        })
+                        .collect()
+                }),
+            ),
+            AppState::TraceEntry(trace) => (
+                "Signal Stack trace entry",
+                vec![
+                    status("trace.value", &format!("Trace code {}", trace.value)),
+                    button("trace.submit", "Submit trace code", true),
+                    button("trace.return", "Return to software details", false),
                 ],
             ),
             AppState::Loading(_) => (
@@ -819,17 +1014,18 @@ impl Application {
                 "Signal Stack controls",
                 vec![button("controls.return", "Return to pause menu", true)],
             ),
-            AppState::Settings(_) => (
+            AppState::Settings(settings) => (
                 "Accessibility settings",
-                vec![button(
-                    "settings.reduced-motion",
-                    if self.reduced_motion() {
-                        "Reduced motion enabled"
-                    } else {
-                        "Reduced motion disabled"
-                    },
-                    true,
-                )],
+                SettingsMenuItem::ALL
+                    .iter()
+                    .map(|item| {
+                        button(
+                            settings_semantic_id(*item),
+                            &self.settings_label(*item),
+                            settings.selected == *item,
+                        )
+                    })
+                    .collect(),
             ),
             AppState::GameOver(game_over) => (
                 "Signal Stack transmission terminated",
@@ -1005,17 +1201,20 @@ impl Application {
             self.transition(AppState::Loading(request));
             return;
         }
-        let Some(descriptor) = runtime
-            .registry
-            .advertised_descriptors()
-            .into_iter()
-            .find(|descriptor| descriptor.id.as_str() == "signal-stack")
-        else {
-            self.fail("Signal Stack is not installed");
+        let descriptors = runtime.registry.advertised_descriptors();
+        let descriptor = runtime
+            .system_state
+            .last_selected_game
+            .as_ref()
+            .and_then(|selected| descriptors.iter().find(|item| item.id == *selected))
+            .or_else(|| descriptors.first())
+            .cloned();
+        let Some(descriptor) = descriptor else {
+            self.fail("No advertised software is installed");
             return;
         };
         let Some(mode) = descriptor.modes.first() else {
-            self.fail("Signal Stack has no playable mode");
+            self.fail(format!("{} has no playable mode", descriptor.title));
             return;
         };
         let request = NewRunRequest {
@@ -1099,28 +1298,69 @@ impl Application {
             PauseMenuItem::Resume => self.resume_from(pause),
             PauseMenuItem::Restart => self.restart_session(pause.session),
             PauseMenuItem::Controls => self.transition(AppState::Controls(pause)),
-            PauseMenuItem::Settings => self.transition(AppState::Settings(pause)),
+            PauseMenuItem::Settings => self.transition(AppState::Settings(SettingsState {
+                pause,
+                selected: SettingsMenuItem::Palette,
+            })),
             PauseMenuItem::Return => self.transition(AppState::Launcher),
             PauseMenuItem::Shutdown => self.begin_shutdown(false),
         }
     }
 
     fn handle_pause_subscreen_action(&mut self, action: AppAction) {
-        if matches!(self.state, AppState::Settings(_)) && action == AppAction::Confirm {
-            if let Some(runtime) = &mut self.runtime {
-                runtime.settings.reduced_motion = !runtime.settings.reduced_motion;
-                if let Err(error) = runtime.repository.save_settings(&runtime.settings) {
-                    runtime.warning = Some(format!("Settings were not saved: {error}"));
-                }
+        if let AppState::Settings(settings) = &mut self.state {
+            if matches!(action, AppAction::NavigateUp | AppAction::NavigateDown) {
+                let current = SettingsMenuItem::ALL
+                    .iter()
+                    .position(|item| *item == settings.selected)
+                    .expect("settings item belongs to menu");
+                let next = if action == AppAction::NavigateUp {
+                    current
+                        .checked_sub(1)
+                        .unwrap_or(SettingsMenuItem::ALL.len() - 1)
+                } else {
+                    (current + 1) % SettingsMenuItem::ALL.len()
+                };
+                settings.selected = SettingsMenuItem::ALL[next];
+                self.bump_revision();
+                return;
             }
-            self.bump_revision();
-            return;
+            if matches!(
+                action,
+                AppAction::Confirm | AppAction::NavigateLeft | AppAction::NavigateRight
+            ) {
+                let selected = settings.selected;
+                if let Some(runtime) = &mut self.runtime {
+                    match selected {
+                        SettingsMenuItem::Palette => {
+                            runtime.settings.display_palette =
+                                cycle_palette(runtime.settings.display_palette);
+                        }
+                        SettingsMenuItem::ReducedMotion => {
+                            runtime.settings.reduced_motion = !runtime.settings.reduced_motion;
+                        }
+                        SettingsMenuItem::QuietOperation => {
+                            runtime.settings.quiet_operation = !runtime.settings.quiet_operation;
+                        }
+                        SettingsMenuItem::BrowserCrt if self.host == HostKind::Browser => {
+                            runtime.settings.crt_effects = !runtime.settings.crt_effects;
+                        }
+                        SettingsMenuItem::BrowserCrt => return,
+                    }
+                    if let Err(error) = runtime.repository.save_settings(&runtime.settings) {
+                        runtime.warning = Some(format!("Settings were not saved: {error}"));
+                    }
+                }
+                self.bump_revision();
+                return;
+            }
         }
         if !matches!(action, AppAction::Back | AppAction::Pause) {
             return;
         }
         let pause = match self.take_state() {
-            AppState::Controls(pause) | AppState::Settings(pause) => pause,
+            AppState::Controls(pause) => pause,
+            AppState::Settings(settings) => settings.pause,
             _ => unreachable!("state checked before extraction"),
         };
         self.transition(AppState::Paused(pause));
@@ -1287,6 +1527,135 @@ impl Application {
         }
     }
 
+    fn open_trace(&mut self) {
+        let Some(runtime) = &self.runtime else {
+            return;
+        };
+        let selected_is_signal = runtime
+            .system_state
+            .last_selected_game
+            .as_ref()
+            .is_none_or(|game| game.as_str() == "signal-stack");
+        if !selected_is_signal || !runtime.system_state.packet_sweep_trace_revealed {
+            return;
+        }
+        if runtime.system_state.packet_sweep_unlocked {
+            self.launch_hidden_packet_sweep();
+        } else {
+            self.transition(AppState::TraceEntry(TraceEntryState {
+                value: String::new(),
+            }));
+        }
+    }
+
+    fn open_selected_manual(&mut self) {
+        let Some(descriptor) = self.selected_descriptor() else {
+            return;
+        };
+        if self
+            .manual_descriptors()
+            .iter()
+            .any(|manual| manual.id == descriptor.id)
+        {
+            self.transition(AppState::ManualDetail(descriptor.id));
+        }
+    }
+
+    fn handle_manual_action(&mut self, action: AppAction) {
+        let manuals = self.manual_descriptors();
+        match &mut self.state {
+            AppState::ManualIndex(selected) => {
+                let count = manuals.len();
+                if count == 0 {
+                    self.transition(AppState::Launcher);
+                    return;
+                }
+                match action {
+                    AppAction::NavigateUp => {
+                        *selected = selected.checked_sub(1).unwrap_or(count - 1);
+                        self.bump_revision();
+                    }
+                    AppAction::NavigateDown => {
+                        *selected = (*selected + 1) % count;
+                        self.bump_revision();
+                    }
+                    AppAction::Confirm => {
+                        if let Some(manual) = manuals.get(*selected) {
+                            self.transition(AppState::ManualDetail(manual.id.clone()));
+                        }
+                    }
+                    AppAction::Back => self.transition(AppState::Launcher),
+                    _ => {}
+                }
+            }
+            AppState::ManualDetail(_) if action == AppAction::Back => {
+                self.transition(AppState::ManualIndex(0));
+            }
+            _ => {}
+        }
+    }
+
+    fn handle_trace_action(&mut self, action: AppAction) {
+        if action == AppAction::Back {
+            self.transition(AppState::SoftwareDetails);
+            return;
+        }
+        let AppState::TraceEntry(trace) = &mut self.state else {
+            return;
+        };
+        match action {
+            AppAction::ClearText => trace.value.clear(),
+            AppAction::DeleteBackward => {
+                trace.value.pop();
+            }
+            AppAction::TextInput(character)
+                if character.is_ascii_alphanumeric() && trace.value.len() < 7 =>
+            {
+                trace.value.push(character.to_ascii_uppercase());
+            }
+            AppAction::Confirm if trace.value == "TRACE90" => {
+                let Some(runtime) = &mut self.runtime else {
+                    return;
+                };
+                runtime.system_state.packet_sweep_unlocked = true;
+                if let Err(error) = runtime.repository.save_system_state(&runtime.system_state) {
+                    runtime.warning = Some(format!("Trace unlock was not saved: {error}"));
+                }
+                self.launch_hidden_packet_sweep();
+                return;
+            }
+            _ => {}
+        }
+        self.bump_revision();
+    }
+
+    fn launch_hidden_packet_sweep(&mut self) {
+        let Some(runtime) = &mut self.runtime else {
+            return;
+        };
+        let descriptor = runtime
+            .registry
+            .hidden_descriptors()
+            .into_iter()
+            .find(|descriptor| descriptor.id.as_str() == "packet-sweep");
+        let Some(descriptor) = descriptor else {
+            self.fail("Packet Sweep program core is unavailable");
+            return;
+        };
+        let Some(mode) = descriptor.modes.first() else {
+            self.fail("Packet Sweep has no playable mode");
+            return;
+        };
+        let request = NewRunRequest {
+            game_id: descriptor.id.clone(),
+            mode_id: mode.id.clone(),
+            rules_revision: descriptor.rules_revision,
+            seed: runtime.metadata.next_seed(),
+        };
+        remember_run(runtime, &request);
+        self.transition(AppState::Loading(request));
+    }
+
     fn submit_tag(&mut self) {
         let tag_entry = match self.take_state() {
             AppState::TagEntry(tag) => tag,
@@ -1347,10 +1716,41 @@ impl Application {
             .and_then(|runtime| runtime.warning.as_deref())
     }
 
-    pub(crate) fn reduced_motion(&self) -> bool {
+    pub(crate) fn settings(&self) -> Settings {
         self.runtime
             .as_ref()
-            .is_some_and(|runtime| runtime.settings.reduced_motion)
+            .map_or_else(Settings::default, |runtime| runtime.settings.clone())
+    }
+
+    fn settings_label(&self, item: SettingsMenuItem) -> String {
+        let settings = self.settings();
+        match item {
+            SettingsMenuItem::Palette => format!("Display palette {:?}", settings.display_palette),
+            SettingsMenuItem::ReducedMotion => format!(
+                "Reduced motion {}",
+                if settings.reduced_motion {
+                    "enabled"
+                } else {
+                    "disabled"
+                }
+            ),
+            SettingsMenuItem::QuietOperation => format!(
+                "Quiet operation {}",
+                if settings.quiet_operation {
+                    "enabled"
+                } else {
+                    "disabled"
+                }
+            ),
+            SettingsMenuItem::BrowserCrt => format!(
+                "Browser CRT effects {}",
+                if settings.crt_effects {
+                    "enabled"
+                } else {
+                    "disabled"
+                }
+            ),
+        }
     }
 
     fn post_privacy_state(&self) -> AppState {
@@ -1387,12 +1787,117 @@ impl Application {
         }
     }
 
-    pub(crate) fn best_signal_stack_score(&self) -> Option<u64> {
+    pub(crate) fn selected_descriptor(&self) -> Option<GameDescriptor> {
+        let runtime = self.runtime.as_ref()?;
+        if let Some(request) = &runtime.pending_direct {
+            return runtime
+                .registry
+                .advertised_descriptors()
+                .into_iter()
+                .chain(runtime.registry.hidden_descriptors())
+                .find(|descriptor| descriptor.id == request.game_id);
+        }
+        let descriptors = runtime.registry.advertised_descriptors();
+        runtime
+            .system_state
+            .last_selected_game
+            .as_ref()
+            .and_then(|id| descriptors.iter().find(|descriptor| descriptor.id == *id))
+            .cloned()
+            .or_else(|| descriptors.first().cloned())
+    }
+
+    pub(crate) fn advertised_descriptors(&self) -> Vec<GameDescriptor> {
+        self.runtime.as_ref().map_or_else(Vec::new, |runtime| {
+            runtime.registry.advertised_descriptors()
+        })
+    }
+
+    pub(crate) fn manual_descriptors(&self) -> Vec<crate::ManualDescriptor> {
+        self.runtime
+            .as_ref()
+            .map_or_else(Vec::new, |runtime| runtime.registry.manual_descriptors())
+    }
+
+    pub(crate) fn manual_descriptor(&self, id: &crate::GameId) -> Option<crate::ManualDescriptor> {
+        self.manual_descriptors()
+            .into_iter()
+            .find(|manual| manual.id == *id)
+    }
+
+    pub(crate) fn best_selected_score(&self) -> Option<u64> {
+        let key = self.selected_ranking_key();
         self.runtime.as_ref().and_then(|runtime| {
-            ranked_scores(&runtime.scores, &signal_stack_ranking_key())
+            ranked_scores(&runtime.scores, &key)
                 .first()
                 .map(|record| record.score)
         })
+    }
+
+    pub(crate) fn packet_trace_available(&self) -> bool {
+        self.runtime.as_ref().is_some_and(|runtime| {
+            runtime.system_state.packet_sweep_trace_revealed
+                && runtime
+                    .system_state
+                    .last_selected_game
+                    .as_ref()
+                    .is_none_or(|game| game.as_str() == "signal-stack")
+        })
+    }
+
+    fn packet_sweep_unlocked(&self) -> bool {
+        self.runtime
+            .as_ref()
+            .is_some_and(|runtime| runtime.system_state.packet_sweep_unlocked)
+    }
+
+    fn selected_ranking_key(&self) -> crate::ScoreRankingKey {
+        self.selected_descriptor()
+            .and_then(|descriptor| {
+                descriptor
+                    .modes
+                    .first()
+                    .cloned()
+                    .map(|mode| (descriptor, mode))
+            })
+            .map_or_else(signal_stack_ranking_key, |(descriptor, mode)| {
+                crate::ScoreRankingKey {
+                    game_id: descriptor.id,
+                    mode_id: mode.id,
+                    rules_revision: descriptor.rules_revision,
+                    assistance_profile: canonical_assistance(),
+                }
+            })
+    }
+
+    fn cycle_launcher(&mut self, forward: bool) {
+        let Some(runtime) = &mut self.runtime else {
+            return;
+        };
+        let descriptors = runtime.registry.advertised_descriptors();
+        if descriptors.is_empty() {
+            return;
+        }
+        let current = runtime
+            .system_state
+            .last_selected_game
+            .as_ref()
+            .and_then(|id| {
+                descriptors
+                    .iter()
+                    .position(|descriptor| descriptor.id == *id)
+            })
+            .unwrap_or(0);
+        let next = if forward {
+            (current + 1) % descriptors.len()
+        } else {
+            current.checked_sub(1).unwrap_or(descriptors.len() - 1)
+        };
+        runtime.system_state.last_selected_game = Some(descriptors[next].id.clone());
+        if let Err(error) = runtime.repository.save_system_state(&runtime.system_state) {
+            runtime.warning = Some(format!("Launcher selection was not saved: {error}"));
+        }
+        self.bump_revision();
     }
 
     fn begin_shutdown(&mut self, urgent: bool) {
@@ -1531,6 +2036,17 @@ fn canonical_assistance() -> AssistanceProfileId {
     AssistanceProfileId::parse("canonical").expect("static assistance profile is valid")
 }
 
+const fn cycle_palette(palette: crate::DisplayPalette) -> crate::DisplayPalette {
+    match palette {
+        crate::DisplayPalette::RcwStandard => crate::DisplayPalette::AmberOffice,
+        crate::DisplayPalette::AmberOffice => crate::DisplayPalette::GreenPhosphor,
+        crate::DisplayPalette::GreenPhosphor => crate::DisplayPalette::MidnightVga,
+        crate::DisplayPalette::MidnightVga => crate::DisplayPalette::HighContrast,
+        crate::DisplayPalette::HighContrast => crate::DisplayPalette::PaperTerminal,
+        crate::DisplayPalette::PaperTerminal => crate::DisplayPalette::RcwStandard,
+    }
+}
+
 fn result_key(result: &GameResult) -> crate::ScoreRankingKey {
     crate::ScoreRankingKey {
         game_id: result.game_id.clone(),
@@ -1589,6 +2105,15 @@ const fn pause_semantic_id(item: PauseMenuItem) -> &'static str {
         PauseMenuItem::Settings => "pause.settings",
         PauseMenuItem::Return => "pause.return",
         PauseMenuItem::Shutdown => "pause.shutdown",
+    }
+}
+
+const fn settings_semantic_id(item: SettingsMenuItem) -> &'static str {
+    match item {
+        SettingsMenuItem::Palette => "settings.palette",
+        SettingsMenuItem::ReducedMotion => "settings.reduced-motion",
+        SettingsMenuItem::QuietOperation => "settings.quiet-operation",
+        SettingsMenuItem::BrowserCrt => "settings.browser-crt",
     }
 }
 
@@ -2037,6 +2562,92 @@ mod tests {
         assert!(display.snapshot().character_grid().contains("TRACE90"));
     }
 
+    #[test]
+    fn trace_entry_unlocks_and_launches_hidden_packet_sweep() {
+        let mut repository = TestRepository::default();
+        repository.system.privacy_acknowledged = true;
+        repository.system.packet_sweep_trace_revealed = true;
+        repository.system.last_selected_game =
+            Some(GameId::parse("signal-stack").expect("valid game ID"));
+        let mut app = Application::with_services(
+            HostKind::Native,
+            CalendarDate::new(25, 7, 2026),
+            Box::new(TestRegistry),
+            Box::new(repository),
+            Box::new(TestMetadata),
+        );
+        press(&mut app, AppAction::Confirm);
+        press(&mut app, AppAction::Confirm);
+        press(&mut app, AppAction::OpenTrace);
+        assert_eq!(app.state_kind(), AppStateKind::TraceEntry);
+        for character in "TRACE90".chars() {
+            press(&mut app, AppAction::TextInput(character));
+        }
+        press(&mut app, AppAction::Confirm);
+        assert_eq!(app.state_kind(), AppStateKind::Loading);
+        assert!(
+            app.runtime
+                .as_ref()
+                .expect("runtime")
+                .system_state
+                .packet_sweep_unlocked
+        );
+    }
+
+    #[test]
+    fn settings_menu_persists_palette_motion_and_quiet_choices() {
+        let mut app = serviced_app();
+        press(&mut app, AppAction::Confirm);
+        press(&mut app, AppAction::Confirm);
+        press(&mut app, AppAction::Confirm);
+        press(&mut app, AppAction::Confirm);
+        app.update(SimulationStep {
+            tick: SimulationTick(1),
+        });
+        press(&mut app, AppAction::Pause);
+        for _ in 0..3 {
+            press(&mut app, AppAction::NavigateDown);
+        }
+        press(&mut app, AppAction::Confirm);
+        assert_eq!(app.state_kind(), AppStateKind::Settings);
+        press(&mut app, AppAction::Confirm);
+        press(&mut app, AppAction::NavigateDown);
+        press(&mut app, AppAction::Confirm);
+        press(&mut app, AppAction::NavigateDown);
+        press(&mut app, AppAction::Confirm);
+        let settings = &app.runtime.as_ref().expect("runtime").settings;
+        assert_eq!(settings.display_palette, crate::DisplayPalette::AmberOffice);
+        assert!(settings.reduced_motion);
+        assert!(settings.quiet_operation);
+        let mut display = raster_display::DisplayBuffer::canonical();
+        app.render(&mut display).expect("settings render");
+        let snapshot = display.snapshot().character_grid();
+        assert!(snapshot.contains("DISPLAY PALETTE"));
+        assert!(snapshot.contains("QUIET OPERATION"));
+    }
+
+    #[test]
+    fn manual_index_and_detail_use_registry_content() {
+        let mut app = serviced_app();
+        press(&mut app, AppAction::Confirm);
+        press(&mut app, AppAction::Confirm);
+        press(&mut app, AppAction::OpenManual);
+        assert_eq!(app.state_kind(), AppStateKind::ManualIndex);
+        press(&mut app, AppAction::Confirm);
+        assert_eq!(app.state_kind(), AppStateKind::ManualDetail);
+        assert_eq!(app.semantic_tree().root.label, "Software manual");
+        let mut display = raster_display::DisplayBuffer::canonical();
+        app.render(&mut display).expect("manual render");
+        assert!(
+            display
+                .snapshot()
+                .character_grid()
+                .contains("normalized controls")
+        );
+        press(&mut app, AppAction::Back);
+        assert_eq!(app.state_kind(), AppStateKind::ManualIndex);
+    }
+
     #[derive(Debug)]
     struct TestRegistry;
 
@@ -2046,11 +2657,23 @@ mod tests {
         }
 
         fn hidden_descriptors(&self) -> Vec<GameDescriptor> {
-            Vec::new()
+            vec![packet_sweep_test_descriptor()]
+        }
+
+        fn manual_descriptors(&self) -> Vec<crate::ManualDescriptor> {
+            vec![crate::ManualDescriptor {
+                id: GameId::parse("signal-stack").expect("valid ID"),
+                title: "Signal Stack".to_owned(),
+                subtitle: "Test manual".to_owned(),
+                sections: vec![crate::ManualSection {
+                    heading: "Controls".to_owned(),
+                    paragraphs: vec!["Use the normalized controls.".to_owned()],
+                }],
+            }]
         }
 
         fn create(&self, game_id: &GameId) -> Result<Box<dyn Game>, GameError> {
-            if game_id.as_str() == "signal-stack" {
+            if matches!(game_id.as_str(), "signal-stack" | "packet-sweep") {
                 Ok(Box::new(TestGame::new()))
             } else {
                 Err(GameError::NotRegistered(game_id.clone()))
@@ -2160,6 +2783,20 @@ mod tests {
                 default_bindings: vec!["X".to_owned()],
             }],
         }
+    }
+
+    fn packet_sweep_test_descriptor() -> GameDescriptor {
+        let mut descriptor = test_descriptor();
+        descriptor.id = GameId::parse("packet-sweep").expect("valid ID");
+        descriptor.title = "Packet Sweep".to_owned();
+        descriptor.short_title = "Packet Sweep".to_owned();
+        descriptor.visibility = crate::CatalogVisibility::Hidden;
+        descriptor.fictional_release_date = None;
+        descriptor.modes = vec![ModeDescriptor {
+            id: ModeId::parse("maintenance-run").expect("valid ID"),
+            title: "Maintenance Run".to_owned(),
+        }];
+        descriptor
     }
 
     #[derive(Debug, Default)]

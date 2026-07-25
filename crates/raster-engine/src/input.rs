@@ -145,6 +145,8 @@ pub enum AppAction {
     OpenShell,
     OpenScores,
     OpenSettings,
+    OpenManual,
+    OpenTrace,
     Interrupt,
     ClearText,
     DeleteBackward,

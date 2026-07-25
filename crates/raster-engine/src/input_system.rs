@@ -272,6 +272,8 @@ pub fn map_key_to_action(key: PhysicalKey, context: InputContext) -> Option<AppA
             KeyCode::Escape => Some(AppAction::Back),
             KeyCode::Function(3) => Some(AppAction::OpenScores),
             KeyCode::Function(10) => Some(AppAction::Back),
+            KeyCode::Character('m' | 'M') => Some(AppAction::OpenManual),
+            KeyCode::Character('t' | 'T') => Some(AppAction::OpenTrace),
             _ => None,
         },
         InputContext::Gameplay => match key.code {

@@ -81,6 +81,20 @@ pub struct ControlDescription {
     pub default_bindings: Vec<String>,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ManualDescriptor {
+    pub id: GameId,
+    pub title: String,
+    pub subtitle: String,
+    pub sections: Vec<ManualSection>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ManualSection {
+    pub heading: String,
+    pub paragraphs: Vec<String>,
+}
+
 pub trait Game: Debug {
     fn descriptor(&self) -> &GameDescriptor;
     fn reset(&mut self, request: &NewRunRequest) -> Result<(), GameError>;
@@ -95,6 +109,9 @@ pub trait Game: Debug {
 pub trait GameRegistry: Debug {
     fn advertised_descriptors(&self) -> Vec<GameDescriptor>;
     fn hidden_descriptors(&self) -> Vec<GameDescriptor>;
+    fn manual_descriptors(&self) -> Vec<ManualDescriptor> {
+        Vec::new()
+    }
     fn create(&self, game_id: &GameId) -> Result<Box<dyn Game>, GameError>;
 }
 
