@@ -1,0 +1,17 @@
+[package]
+name = "raster-testkit"
+description = "Shared deterministic test support for Raster Nights"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+raster-display = { path = "../raster-display" }
+raster-engine = { path = "../raster-engine" }
+raster-storage = { path = "../raster-storage" }
+
+[lints]
+workspace = true

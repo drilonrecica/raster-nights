@@ -1,0 +1,49 @@
+[workspace]
+members = [
+    "apps/terminal",
+    "apps/web",
+    "crates/raster-display",
+    "crates/raster-engine",
+    "crates/raster-games",
+    "crates/raster-storage",
+    "crates/raster-testkit",
+]
+resolver = "3"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.90"
+authors = ["Drilon Reçica"]
+license = "MPL-2.0"
+repository = "https://github.com/drilonrecica/raster-nights"
+
+[workspace.dependencies]
+anyhow = "1.0.100"
+console_error_panic_hook = "0.1.7"
+crossterm = { version = "0.29.0", default-features = false, features = ["events", "windows"] }
+rand_chacha = { version = "0.10.0", default-features = false }
+rand_core = { version = "0.10.1", default-features = false }
+ratatui = { version = "0.30.2", default-features = false, features = ["crossterm_0_29"] }
+ratzilla = "0.3.1"
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.145"
+thiserror = "2.0.18"
+unicode-width = "0.2.2"
+wasm-bindgen = "0.2.126"
+wasm-bindgen-test = "0.3.58"
+web-sys = { version = "0.3.81", features = ["Document", "Element", "Window"] }
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+unused_must_use = "deny"
+
+[workspace.lints.clippy]
+dbg_macro = "deny"
+todo = "deny"
+unimplemented = "deny"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = "symbols"

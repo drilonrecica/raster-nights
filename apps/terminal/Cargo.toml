@@ -1,0 +1,21 @@
+[package]
+name = "raster-terminal"
+description = "Native terminal host for Raster Nights"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+crossterm.workspace = true
+ratatui.workspace = true
+raster-display = { path = "../../crates/raster-display" }
+raster-engine = { path = "../../crates/raster-engine" }
+raster-games = { path = "../../crates/raster-games" }
+raster-storage = { path = "../../crates/raster-storage" }
+
+[lints]
+workspace = true

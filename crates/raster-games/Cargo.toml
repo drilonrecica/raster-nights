@@ -1,0 +1,21 @@
+[package]
+name = "raster-games"
+description = "Curated game catalog for Raster Nights"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+rand_chacha.workspace = true
+rand_core.workspace = true
+raster-display = { path = "../raster-display" }
+raster-engine = { path = "../raster-engine" }
+
+[dev-dependencies]
+wasm-bindgen-test.workspace = true
+
+[lints]
+workspace = true

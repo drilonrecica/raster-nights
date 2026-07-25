@@ -1,0 +1,27 @@
+[package]
+name = "raster-web"
+description = "Browser WebAssembly host for Raster Nights"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+raster-display = { path = "../../crates/raster-display" }
+raster-engine = { path = "../../crates/raster-engine" }
+raster-games = { path = "../../crates/raster-games" }
+raster-storage = { path = "../../crates/raster-storage" }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+console_error_panic_hook.workspace = true
+ratzilla.workspace = true
+wasm-bindgen.workspace = true
+web-sys.workspace = true
+
+[lints]
+workspace = true

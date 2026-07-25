@@ -82,7 +82,10 @@ WIP final
 
 Use stable Rust.
 
-The repository should declare its minimum supported Rust version in workspace metadata when implementation begins.
+The workspace minimum supported Rust version is 1.90. This is the lowest
+version supported by the selected Ratzilla 0.3 browser-rendering dependency
+chain. Normal development and release checks use the current stable toolchain;
+CI also checks the declared minimum version.
 
 Likely tools:
 
