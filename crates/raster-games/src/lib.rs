@@ -5,7 +5,9 @@
 #[cfg(all(test, target_arch = "wasm32"))]
 mod wasm_tests {
     use raster_display::{DISPLAY_HEIGHT, DISPLAY_WIDTH, DisplayBuffer, render_diagnostic_grid};
-    use wasm_bindgen_test::wasm_bindgen_test;
+    use wasm_bindgen_test::{wasm_bindgen_test, wasm_bindgen_test_configure};
+
+    wasm_bindgen_test_configure!(run_in_browser);
 
     #[wasm_bindgen_test]
     fn shared_display_composition_runs_in_wasm() {

@@ -11,6 +11,11 @@ repository.workspace = true
 [lib]
 crate-type = ["cdylib", "rlib"]
 
+# wasm-pack's bundled wasm-opt currently rejects bulk-memory instructions
+# emitted by stable Rust. Cargo's release optimization remains active.
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = false
+
 [dependencies]
 raster-display = { path = "../../crates/raster-display", features = ["ratatui"] }
 raster-engine = { path = "../../crates/raster-engine" }
