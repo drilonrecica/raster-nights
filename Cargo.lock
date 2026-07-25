@@ -790,6 +790,7 @@ dependencies = [
  "raster-games",
  "raster-storage",
  "ratatui",
+ "time",
 ]
 
 [[package]]

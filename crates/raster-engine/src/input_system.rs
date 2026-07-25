@@ -172,6 +172,13 @@ impl InputSystem {
         match self.capability {
             InputCapability::Enhanced => {
                 if self.held.contains_key(&key) {
+                    if action == AppAction::Interrupt {
+                        return vec![ActionEvent {
+                            tick,
+                            action,
+                            phase: ActionPhase::Pressed,
+                        }];
+                    }
                     return Vec::new();
                 }
                 self.held.insert(key, HeldInput::new(action, tick, None));
@@ -327,6 +334,32 @@ mod tests {
         );
 
         assert_eq!(action, Some(AppAction::Interrupt));
+    }
+
+    #[test]
+    fn repeated_interrupt_press_is_not_suppressed() {
+        let mut input = InputSystem::new(InputCapability::Enhanced);
+        let control_c = PhysicalKey {
+            code: KeyCode::Character('c'),
+            modifiers: KeyModifiers {
+                control: true,
+                ..KeyModifiers::default()
+            },
+        };
+
+        let first = input.handle(
+            DeviceInput::KeyPressed(control_c),
+            SimulationTick(1),
+            InputContext::Navigation,
+        );
+        let second = input.handle(
+            DeviceInput::KeyPressed(control_c),
+            SimulationTick(2),
+            InputContext::Navigation,
+        );
+
+        assert_eq!(first[0].action, AppAction::Interrupt);
+        assert_eq!(second[0].action, AppAction::Interrupt);
     }
 
     #[test]

@@ -156,14 +156,7 @@ impl Application {
 
     #[must_use]
     pub const fn is_suspended(&self) -> bool {
-        matches!(
-            self.state,
-            AppState::ResizeSuspended(_)
-                | AppState::SystemMenu(_)
-                | AppState::InterruptConfirm(_)
-                | AppState::Shutdown(_)
-                | AppState::FatalError(_)
-        )
+        matches!(self.state, AppState::ResizeSuspended(_))
     }
 
     #[must_use]

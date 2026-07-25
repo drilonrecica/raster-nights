@@ -16,6 +16,7 @@ raster-display = { path = "../../crates/raster-display", features = ["ratatui"] 
 raster-engine = { path = "../../crates/raster-engine" }
 raster-games = { path = "../../crates/raster-games" }
 raster-storage = { path = "../../crates/raster-storage" }
+time.workspace = true
 
 [lints]
 workspace = true
