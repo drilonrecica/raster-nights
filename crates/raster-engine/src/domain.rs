@@ -161,6 +161,13 @@ pub enum GameOutcome {
     Abandoned,
 }
 
+/// Stable non-score fact reported by a deterministic run.
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum DiscoveryMarker {
+    PacketSweepTrace,
+}
+
 /// Host-independent result envelope produced by a finished game.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct GameResult {
@@ -172,6 +179,7 @@ pub struct GameResult {
     pub score: u64,
     pub outcome: GameOutcome,
     pub final_state_hash: StateHash,
+    pub discoveries: Vec<DiscoveryMarker>,
 }
 
 /// Validated, normalized score-board tag.

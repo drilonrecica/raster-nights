@@ -360,6 +360,13 @@ fn render_game_over(
         15,
         "TRANSMISSION ................... TERMINATED",
     )?;
+    if game_over
+        .result
+        .discoveries
+        .contains(&crate::DiscoveryMarker::PacketSweepTrace)
+    {
+        warning(display, 35, 18, "RESIDUAL TRACE ............... TRACE90")?;
+    }
     emphasized(
         display,
         39,

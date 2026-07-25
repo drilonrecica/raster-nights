@@ -3,6 +3,7 @@
 //! Official game implementations and their explicit registry.
 
 pub mod loopback;
+pub mod packet_sweep;
 mod registry;
 pub mod signal_stack;
 
@@ -67,6 +68,6 @@ mod wasm_tests {
             });
         }
 
-        assert_eq!(game.state_hash(), StateHash(17_381_950_295_200_256_755));
+        assert_eq!(game.state_hash(), StateHash(14_724_018_137_410_630_377));
     }
 }

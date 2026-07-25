@@ -1164,6 +1164,17 @@ impl Application {
             self.fail("game returned a result that does not match the active run");
             return;
         }
+        if result
+            .discoveries
+            .contains(&crate::DiscoveryMarker::PacketSweepTrace)
+            && let Some(runtime) = &mut self.runtime
+            && !runtime.system_state.packet_sweep_trace_revealed
+        {
+            runtime.system_state.packet_sweep_trace_revealed = true;
+            if let Err(error) = runtime.repository.save_system_state(&runtime.system_state) {
+                runtime.warning = Some(format!("Trace discovery was not remembered: {error}"));
+            }
+        }
         let key = crate::ScoreRankingKey {
             game_id: result.game_id.clone(),
             mode_id: result.mode_id.clone(),
@@ -1987,6 +1998,45 @@ mod tests {
         assert_eq!(app.state_kind(), AppStateKind::Paused);
     }
 
+    #[test]
+    fn discovery_marker_is_persisted_when_a_matching_run_finishes() {
+        let mut app = serviced_app();
+        press(&mut app, AppAction::Confirm);
+        press(&mut app, AppAction::Confirm);
+        press(&mut app, AppAction::Confirm);
+        press(&mut app, AppAction::Confirm);
+        app.update(SimulationStep {
+            tick: SimulationTick(1),
+        });
+        let request = match &app.state {
+            AppState::Playing(session) => session.request.clone(),
+            state => panic!("expected playing state, found {state:?}"),
+        };
+
+        app.finish_run(GameResult {
+            game_id: request.game_id,
+            mode_id: request.mode_id,
+            rules_revision: request.rules_revision,
+            seed: request.seed,
+            final_tick: SimulationTick(90),
+            score: 9_000,
+            outcome: GameOutcome::GameOver,
+            final_state_hash: StateHash(90),
+            discoveries: vec![crate::DiscoveryMarker::PacketSweepTrace],
+        });
+
+        assert!(
+            app.runtime
+                .as_ref()
+                .expect("runtime")
+                .system_state
+                .packet_sweep_trace_revealed
+        );
+        let mut display = raster_display::DisplayBuffer::canonical();
+        app.render(&mut display).expect("game-over render");
+        assert!(display.snapshot().character_grid().contains("TRACE90"));
+    }
+
     #[derive(Debug)]
     struct TestRegistry;
 
@@ -2080,6 +2130,7 @@ mod tests {
                 score: 100,
                 outcome: GameOutcome::GameOver,
                 final_state_hash: StateHash(42),
+                discoveries: Vec::new(),
             })
         }
     }

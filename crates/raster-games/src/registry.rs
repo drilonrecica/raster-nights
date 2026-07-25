@@ -11,7 +11,11 @@ use raster_engine::{
 use serde::Deserialize;
 use thiserror::Error;
 
-use crate::signal_stack::{SignalStack, render};
+use crate::{
+    loopback::{Loopback, render as render_loopback},
+    packet_sweep::{PacketSweep, render as render_packet_sweep},
+    signal_stack::{SignalStack, render as render_signal_stack},
+};
 
 const CATALOG_JSON: &str = include_str!("../../../content/catalog.json");
 const CATALOG_FORMAT_VERSION: u16 = 1;
@@ -83,10 +87,12 @@ impl GameRegistry for RasterGameRegistry {
     }
 
     fn create(&self, game_id: &GameId) -> Result<Box<dyn Game>, GameError> {
-        if game_id.as_str() != "signal-stack" {
-            return Err(GameError::NotRegistered(game_id.clone()));
+        match game_id.as_str() {
+            "signal-stack" => Ok(Box::new(SignalStackGame::new())),
+            "loopback" => Ok(Box::new(LoopbackGame::new())),
+            "packet-sweep" => Ok(Box::new(PacketSweepGame::new())),
+            _ => Err(GameError::NotRegistered(game_id.clone())),
         }
-        Ok(Box::new(SignalStackGame::new()))
     }
 }
 
@@ -138,7 +144,7 @@ impl Game for SignalStackGame {
     }
 
     fn render(&self, display: &mut dyn Display) -> Result<(), GlyphError> {
-        render(&self.simulation, display)
+        render_signal_stack(&self.simulation, display)
     }
 
     fn set_paused(&mut self, paused: bool) {
@@ -154,6 +160,89 @@ impl Game for SignalStackGame {
     }
 }
 
+macro_rules! game_adapter {
+    ($adapter:ident, $simulation:ty, $id:literal, $mode:literal, $renderer:ident) => {
+        #[derive(Debug)]
+        struct $adapter {
+            descriptor: GameDescriptor,
+            simulation: $simulation,
+        }
+
+        impl $adapter {
+            fn new() -> Self {
+                Self {
+                    descriptor: bundled_descriptor($id),
+                    simulation: <$simulation>::new(RunSeed(0)),
+                }
+            }
+        }
+
+        impl Game for $adapter {
+            fn descriptor(&self) -> &GameDescriptor {
+                &self.descriptor
+            }
+
+            fn reset(&mut self, request: &NewRunRequest) -> Result<(), GameError> {
+                if request.game_id != self.descriptor.id
+                    || request.mode_id.as_str() != $mode
+                    || request.rules_revision != self.descriptor.rules_revision
+                {
+                    return Err(GameError::InvalidRunRequest);
+                }
+                self.simulation.reset(request.seed);
+                Ok(())
+            }
+
+            fn handle_action(
+                &mut self,
+                action: raster_engine::GameAction,
+                phase: ActionPhase,
+            ) -> Result<(), GameError> {
+                if phase != ActionPhase::Released {
+                    self.simulation.handle_action(action);
+                }
+                Ok(())
+            }
+
+            fn update(&mut self, step: SimulationStep) -> Result<(), GameError> {
+                self.simulation.update(step);
+                Ok(())
+            }
+
+            fn render(&self, display: &mut dyn Display) -> Result<(), GlyphError> {
+                $renderer(&self.simulation, display)
+            }
+
+            fn set_paused(&mut self, paused: bool) {
+                self.simulation.set_paused(paused);
+            }
+
+            fn status(&self) -> GameStatus {
+                self.simulation.game_status()
+            }
+
+            fn result(&self) -> Option<GameResult> {
+                self.simulation.result()
+            }
+        }
+    };
+}
+
+game_adapter!(
+    LoopbackGame,
+    Loopback,
+    "loopback",
+    "quick-circuit",
+    render_loopback
+);
+game_adapter!(
+    PacketSweepGame,
+    PacketSweep,
+    "packet-sweep",
+    "maintenance-run",
+    render_packet_sweep
+);
+
 fn bundled_descriptor(id: &str) -> GameDescriptor {
     let registry = RasterGameRegistry::new();
     registry
@@ -168,17 +257,34 @@ fn validate_compiled_registration(
     advertised: &[GameDescriptor],
     hidden: &[GameDescriptor],
 ) -> Result<(), CatalogError> {
-    let descriptors = advertised.iter().chain(hidden);
-    let signal_stack = descriptors
-        .into_iter()
-        .find(|descriptor| descriptor.id.as_str() == "signal-stack")
-        .ok_or_else(|| CatalogError::MissingCompiledGame("signal-stack".to_owned()))?;
-    if signal_stack.rules_revision != crate::signal_stack::rules_revision() {
-        return Err(CatalogError::RulesRevisionMismatch {
-            game_id: signal_stack.id.clone(),
-            content: signal_stack.rules_revision,
-            compiled: crate::signal_stack::rules_revision(),
-        });
+    let descriptors = advertised.iter().chain(hidden).collect::<Vec<_>>();
+    let compiled = [
+        ("signal-stack", crate::signal_stack::rules_revision()),
+        ("loopback", crate::loopback::rules_revision()),
+        ("packet-sweep", crate::packet_sweep::rules_revision()),
+    ];
+    for (id, revision) in compiled {
+        let descriptor = descriptors
+            .iter()
+            .find(|descriptor| descriptor.id.as_str() == id)
+            .ok_or_else(|| CatalogError::MissingCompiledGame(id.to_owned()))?;
+        if descriptor.rules_revision != revision {
+            return Err(CatalogError::RulesRevisionMismatch {
+                game_id: descriptor.id.clone(),
+                content: descriptor.rules_revision,
+                compiled: revision,
+            });
+        }
+    }
+    if descriptors.len() != compiled.len() {
+        let extra = descriptors
+            .iter()
+            .find(|descriptor| !compiled.iter().any(|(id, _)| descriptor.id.as_str() == *id))
+            .expect("descriptor count proves an extra registration");
+        return Err(CatalogError::MissingCompiledGame(format!(
+            "factory for {}",
+            extra.id
+        )));
     }
     Ok(())
 }
@@ -382,14 +488,15 @@ mod tests {
     }
 
     #[test]
-    fn registry_exposes_only_the_installed_game() {
+    fn registry_separates_advertised_and_hidden_games() {
         let registry = RasterGameRegistry::new();
         let descriptors = registry.advertised_descriptors();
 
-        assert_eq!(descriptors.len(), 1);
+        assert_eq!(descriptors.len(), 2);
         assert_eq!(descriptors[0].id.as_str(), "signal-stack");
         assert_eq!(descriptors[0].modes.len(), 1);
-        assert!(registry.hidden_descriptors().is_empty());
+        assert_eq!(descriptors[1].id.as_str(), "loopback");
+        assert_eq!(registry.hidden_descriptors()[0].id.as_str(), "packet-sweep");
     }
 
     #[test]

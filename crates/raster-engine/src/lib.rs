@@ -15,8 +15,8 @@ mod semantic;
 pub use app::{AppStateKind, Application, CalendarDate, HostKind, MINIMUM_COLUMNS, MINIMUM_ROWS};
 pub use clock::{FixedStepClock, MAX_FRAME_DELTA, SIMULATION_HZ, StepBatch};
 pub use domain::{
-    GameId, GameOutcome, GameResult, GameStatus, IdentifierError, ModeId, RulesRevision, RunSeed,
-    SimulationStep, SimulationTick, StateHash, ThreeCharacterTag,
+    DiscoveryMarker, GameId, GameOutcome, GameResult, GameStatus, IdentifierError, ModeId,
+    RulesRevision, RunSeed, SimulationStep, SimulationTick, StateHash, ThreeCharacterTag,
 };
 pub use game::{
     CatalogVisibility, ControlDescription, DirectLaunchRequest, Game, GameCategory, GameDescriptor,

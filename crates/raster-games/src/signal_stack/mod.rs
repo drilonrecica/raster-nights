@@ -10,8 +10,8 @@ pub use render::render;
 use rand_chacha::ChaCha8Rng;
 use rand_core::{Rng, SeedableRng};
 use raster_engine::{
-    GameAction, GameId, GameOutcome, GameResult, GameStatus, ModeId, RulesRevision, RunSeed,
-    SimulationStep, SimulationTick, StateHash,
+    DiscoveryMarker, GameAction, GameId, GameOutcome, GameResult, GameStatus, ModeId,
+    RulesRevision, RunSeed, SimulationStep, SimulationTick, StateHash,
 };
 
 pub const MATRIX_WIDTH: i8 = 10;
@@ -145,6 +145,7 @@ pub struct SignalStack {
     last_maneuver: LastManeuver,
     signal_chain: Option<u32>,
     sustained_transmission: bool,
+    trace_discovered: bool,
     pending_spawn: bool,
     queued_actions: Vec<GameAction>,
 }
@@ -174,6 +175,7 @@ impl SignalStack {
             last_maneuver: LastManeuver::None,
             signal_chain: None,
             sustained_transmission: false,
+            trace_discovered: false,
             pending_spawn: false,
             queued_actions: Vec::with_capacity(4),
         };
@@ -282,6 +284,11 @@ impl SignalStack {
             score: self.score,
             outcome: GameOutcome::GameOver,
             final_state_hash: self.state_hash(),
+            discoveries: if self.trace_discovered {
+                vec![DiscoveryMarker::PacketSweepTrace]
+            } else {
+                Vec::new()
+            },
         })
     }
 
@@ -396,6 +403,7 @@ impl SignalStack {
         hash.u8(self.last_maneuver as u8);
         hash.option(self.signal_chain, |hash, chain| hash.u32(chain));
         hash.bool(self.sustained_transmission);
+        hash.bool(self.trace_discovered);
         hash.bool(self.pending_spawn);
         StateHash(hash.finish())
     }
@@ -636,6 +644,9 @@ impl SignalStack {
                 self.score = self
                     .score
                     .saturating_add(2_000_u64.saturating_mul(u64::from(rate)));
+                if rate >= 5 {
+                    self.trace_discovered = true;
+                }
             }
         } else {
             self.score = self
@@ -1040,6 +1051,21 @@ mod tests {
     }
 
     #[test]
+    fn rate_five_zero_state_records_packet_sweep_trace() {
+        let mut game = SignalStack::new(RunSeed(90));
+        game.matrix.fill(None);
+
+        game.apply_clear_score(1, false, 5);
+
+        assert!(game.trace_discovered);
+        game.saturate();
+        assert_eq!(
+            game.result().expect("finished result").discoveries,
+            vec![DiscoveryMarker::PacketSweepTrace]
+        );
+    }
+
+    #[test]
     fn channels_clear_and_rate_advances_after_scoring() {
         let mut game = SignalStack::new(RunSeed(12));
         game.matrix.fill(None);
@@ -1175,7 +1201,7 @@ mod tests {
             step(&mut second, tick, actions);
         }
         assert_eq!(first.state_hash(), second.state_hash());
-        assert_eq!(first.state_hash(), StateHash(17_381_950_295_200_256_755));
+        assert_eq!(first.state_hash(), StateHash(14_724_018_137_410_630_377));
     }
 
     #[test]

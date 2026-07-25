@@ -57,6 +57,48 @@
           "default_bindings": ["C"]
         }
       ]
+    },
+    {
+      "id": "loopback",
+      "title": "Loopback",
+      "short_title": "Loopback",
+      "category": "action",
+      "fictional_release_date": "19.12.1993",
+      "fictional_version": "1.0",
+      "catalog_number": "RCW-CD-019",
+      "fictional_developer": "Noah Arc Labs",
+      "fictional_publisher": "Reçica Computer Works",
+      "premise": "Route a live circuit through paired ports while collecting payloads before the line closes.",
+      "visibility": "advertised",
+      "rules_revision": 1,
+      "modes": [{"id": "quick-circuit", "title": "Quick Circuit"}],
+      "controls": [
+        {"action": "move-left", "label": "Route left", "default_bindings": ["LEFT", "H"]},
+        {"action": "move-right", "label": "Route right", "default_bindings": ["RIGHT", "L"]},
+        {"action": "move-up", "label": "Route up", "default_bindings": ["UP", "K"]},
+        {"action": "move-down", "label": "Route down", "default_bindings": ["DOWN", "J"]}
+      ]
+    },
+    {
+      "id": "packet-sweep",
+      "title": "Packet Sweep",
+      "short_title": "Packet Sweep",
+      "category": "action",
+      "fictional_release_date": null,
+      "fictional_version": "1.0",
+      "catalog_number": null,
+      "fictional_developer": "Frankenberg Logic Bureau",
+      "fictional_publisher": "Frankenberg Logic Bureau",
+      "premise": "A concealed checksum-maintenance routine for the Signal Stack matrix.",
+      "visibility": "hidden",
+      "rules_revision": 1,
+      "modes": [{"id": "maintenance-run", "title": "Maintenance Run"}],
+      "controls": [
+        {"action": "move-left", "label": "Move cursor left", "default_bindings": ["LEFT", "H"]},
+        {"action": "move-right", "label": "Move cursor right", "default_bindings": ["RIGHT", "L"]},
+        {"action": "move-up", "label": "Move cursor up", "default_bindings": ["UP", "K"]},
+        {"action": "move-down", "label": "Move cursor down", "default_bindings": ["DOWN", "J"]}
+      ]
     }
   ]
 }
