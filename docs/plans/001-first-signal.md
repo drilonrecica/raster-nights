@@ -750,13 +750,13 @@ Design a 100×36 layout with:
 
 ### Snapshots
 
-- [x] empty board
-- [x] mid-game
-- [x] near saturation
-- [x] multi-clear
-- [x] paused
-- [x] game over
-- [x] tag entry
+- [x] full empty-board structured golden snapshot
+- [x] full mid-game structured golden snapshot
+- [x] full near-saturation structured golden snapshot
+- [x] full pending multi-clear structured golden snapshot
+- [x] full paused structured golden snapshot
+- [x] full game-over structured golden snapshot
+- [x] full tag-entry structured golden snapshot
 
 ---
 
@@ -915,7 +915,7 @@ The site remains useful when the Wasm application fails to load.
 - [x] golden run Wasm.
 - [x] enhanced and compatibility input.
 - [x] semantic tree and browser mirror.
-- [x] snapshots.
+- [x] full structured rendering golden snapshots.
 
 ### CI
 
