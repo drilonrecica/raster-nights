@@ -170,7 +170,7 @@ const fn style(foreground: SemanticColor) -> CellStyle {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use raster_display::DisplayBuffer;
+    use raster_display::{DisplayBuffer, DisplaySnapshot};
     use raster_engine::RunSeed;
 
     #[test]
@@ -188,6 +188,13 @@ mod tests {
                 .iter()
                 .any(|symbol| grid.contains(symbol))
         );
+        let snapshot = display.snapshot();
+        assert_eq!(
+            snapshot_hash(&snapshot),
+            14_891_766_746_609_308_624,
+            "\n{}",
+            snapshot.character_grid()
+        );
     }
 
     #[test]
@@ -203,6 +210,13 @@ mod tests {
 
         assert!(grid.contains("JJJJJJJJJJJJ"));
         assert!(grid.contains("STATUS  SIGNAL STABLE"));
+        let snapshot = display.snapshot();
+        assert_eq!(
+            snapshot_hash(&snapshot),
+            16_888_280_419_838_489_558,
+            "\n{}",
+            snapshot.character_grid()
+        );
     }
 
     #[test]
@@ -216,6 +230,13 @@ mod tests {
 
         assert!(grid.contains("STATUS  MATRIX CRITICAL"));
         assert!(grid.contains("ZZ"));
+        let snapshot = display.snapshot();
+        assert_eq!(
+            snapshot_hash(&snapshot),
+            13_691_359_867_329_634_086,
+            "\n{}",
+            snapshot.character_grid()
+        );
     }
 
     #[test]
@@ -235,5 +256,36 @@ mod tests {
 
         assert_eq!(snapshot.size, raster_display::DISPLAY_SIZE);
         assert_eq!(snapshot.character_grid().lines().count(), 36);
+        assert_eq!(
+            snapshot_hash(&snapshot),
+            696_464_701_100_299_601,
+            "\n{}",
+            snapshot.character_grid()
+        );
+    }
+
+    fn snapshot_hash(snapshot: &DisplaySnapshot) -> u64 {
+        let mut hash = 14_695_981_039_346_656_037_u64;
+        for value in [snapshot.size.width, snapshot.size.height] {
+            for byte in value.to_le_bytes() {
+                hash = (hash ^ u64::from(byte)).wrapping_mul(1_099_511_628_211);
+            }
+        }
+        for cell in &snapshot.cells {
+            for byte in u32::from(cell.glyph()).to_le_bytes() {
+                hash = (hash ^ u64::from(byte)).wrapping_mul(1_099_511_628_211);
+            }
+            for byte in [
+                cell.style.foreground as u8,
+                cell.style.background as u8,
+                u8::from(cell.style.modifiers.bold)
+                    | u8::from(cell.style.modifiers.dim) << 1
+                    | u8::from(cell.style.modifiers.underlined) << 2
+                    | u8::from(cell.style.modifiers.reversed) << 3,
+            ] {
+                hash = (hash ^ u64::from(byte)).wrapping_mul(1_099_511_628_211);
+            }
+        }
+        hash
     }
 }

@@ -596,6 +596,28 @@ impl Application {
             "settings.reduced-motion" => {
                 self.handle_action(AppAction::Confirm, ActionPhase::Pressed);
             }
+            "game-over.continue" | "game-over.restart" | "game-over.return" => {
+                if let AppState::GameOver(game_over) = &mut self.state {
+                    game_over.selected = match id.as_str() {
+                        "game-over.continue" => GameOverItem::Continue,
+                        "game-over.restart" => GameOverItem::Restart,
+                        "game-over.return" => GameOverItem::Return,
+                        _ => unreachable!("semantic ID matched above"),
+                    };
+                }
+                self.handle_action(AppAction::Confirm, ActionPhase::Pressed);
+            }
+            "tag.character-0" | "tag.character-1" | "tag.character-2" => {
+                if let AppState::TagEntry(tag) = &mut self.state {
+                    let index = usize::from(id.as_str().as_bytes()[14] - b'0');
+                    tag.cursor = index;
+                    tag.tag[index] = cycle_tag_character(tag.tag[index], true);
+                    self.bump_revision();
+                }
+            }
+            "tag.submit" => self.handle_action(AppAction::Confirm, ActionPhase::Pressed),
+            "tag.back" => self.handle_action(AppAction::Back, ActionPhase::Pressed),
+            "scores.return" => self.transition(AppState::Launcher),
             _ => {}
         }
     }
@@ -736,28 +758,71 @@ impl Application {
             ),
             AppState::GameOver(game_over) => (
                 "Signal Stack transmission terminated",
-                vec![status(
-                    "game-over.score",
-                    &format!("Final score {}", game_over.result.score),
-                )],
+                vec![
+                    status(
+                        "game-over.score",
+                        &format!("Final score {}", game_over.result.score),
+                    ),
+                    button(
+                        "game-over.continue",
+                        if game_over.qualifies {
+                            "Enter operator tag"
+                        } else {
+                            "View local records"
+                        },
+                        game_over.selected == GameOverItem::Continue,
+                    ),
+                    button(
+                        "game-over.restart",
+                        "Restart",
+                        game_over.selected == GameOverItem::Restart,
+                    ),
+                    button(
+                        "game-over.return",
+                        "Return to AfterHours",
+                        game_over.selected == GameOverItem::Return,
+                    ),
+                ],
             ),
             AppState::TagEntry(tag) => (
                 "Operator identification entry",
-                vec![status(
-                    "tag.value",
-                    std::str::from_utf8(&tag.tag).expect("tag editor is ASCII"),
-                )],
+                vec![
+                    status(
+                        "tag.value",
+                        std::str::from_utf8(&tag.tag).expect("tag editor is ASCII"),
+                    ),
+                    button(
+                        "tag.character-0",
+                        &format!("First character: {}", char::from(tag.tag[0])),
+                        tag.cursor == 0,
+                    ),
+                    button(
+                        "tag.character-1",
+                        &format!("Second character: {}", char::from(tag.tag[1])),
+                        tag.cursor == 1,
+                    ),
+                    button(
+                        "tag.character-2",
+                        &format!("Third character: {}", char::from(tag.tag[2])),
+                        tag.cursor == 2,
+                    ),
+                    button("tag.submit", "Submit operator tag", false),
+                    button("tag.back", "Return to diagnostics", false),
+                ],
             ),
             AppState::Scores(scores) => (
                 "Signal Stack local records",
-                vec![status(
-                    "scores.status",
-                    if scores.saved {
-                        "Score saved locally"
-                    } else {
-                        "Local score table"
-                    },
-                )],
+                vec![
+                    status(
+                        "scores.status",
+                        if scores.saved {
+                            "Score saved locally"
+                        } else {
+                            "Local score table"
+                        },
+                    ),
+                    button("scores.return", "Return to AfterHours", true),
+                ],
             ),
             AppState::SystemMenu(menu) => (
                 "System control",
@@ -1519,6 +1584,13 @@ mod tests {
         assert!(app.is_suspended());
         let mut display = raster_display::DisplayBuffer::canonical();
         app.render(&mut display).expect("pause screen renders");
+        let snapshot = display.snapshot();
+        assert_eq!(
+            snapshot_hash(&snapshot),
+            11_365_372_762_637_202_352,
+            "\n{}",
+            snapshot.character_grid()
+        );
         assert!(
             display
                 .snapshot()
@@ -1532,7 +1604,21 @@ mod tests {
             tick: SimulationTick(2),
         });
         assert_eq!(app.state_kind(), AppStateKind::GameOver);
+        assert!(
+            app.semantic_tree()
+                .root
+                .children
+                .iter()
+                .any(|node| node.id.as_str() == "game-over.continue")
+        );
         app.render(&mut display).expect("game-over screen renders");
+        let snapshot = display.snapshot();
+        assert_eq!(
+            snapshot_hash(&snapshot),
+            12_537_496_149_893_182_665,
+            "\n{}",
+            snapshot.character_grid()
+        );
         assert!(
             display
                 .snapshot()
@@ -1541,7 +1627,21 @@ mod tests {
         );
         press(&mut app, AppAction::Confirm);
         assert_eq!(app.state_kind(), AppStateKind::TagEntry);
+        assert!(
+            app.semantic_tree()
+                .root
+                .children
+                .iter()
+                .any(|node| node.id.as_str() == "tag.submit")
+        );
         app.render(&mut display).expect("tag screen renders");
+        let snapshot = display.snapshot();
+        assert_eq!(
+            snapshot_hash(&snapshot),
+            14_200_273_076_630_531_459,
+            "\n{}",
+            snapshot.character_grid()
+        );
         assert!(
             display
                 .snapshot()
@@ -1760,5 +1860,30 @@ mod tests {
         fn unix_seconds(&self) -> i64 {
             1_753_481_600
         }
+    }
+
+    fn snapshot_hash(snapshot: &raster_display::DisplaySnapshot) -> u64 {
+        let mut hash = 14_695_981_039_346_656_037_u64;
+        for value in [snapshot.size.width, snapshot.size.height] {
+            for byte in value.to_le_bytes() {
+                hash = (hash ^ u64::from(byte)).wrapping_mul(1_099_511_628_211);
+            }
+        }
+        for cell in &snapshot.cells {
+            for byte in u32::from(cell.glyph()).to_le_bytes() {
+                hash = (hash ^ u64::from(byte)).wrapping_mul(1_099_511_628_211);
+            }
+            for byte in [
+                cell.style.foreground as u8,
+                cell.style.background as u8,
+                u8::from(cell.style.modifiers.bold)
+                    | u8::from(cell.style.modifiers.dim) << 1
+                    | u8::from(cell.style.modifiers.underlined) << 2
+                    | u8::from(cell.style.modifiers.reversed) << 3,
+            ] {
+                hash = (hash ^ u64::from(byte)).wrapping_mul(1_099_511_628_211);
+            }
+        }
+        hash
     }
 }

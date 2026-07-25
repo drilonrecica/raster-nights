@@ -202,33 +202,34 @@ pub fn score_qualifies(scores: &[ScoreRecord], key: &ScoreRankingKey, score: u64
 /// Equal scores retain insertion order and never displace an older cutoff.
 pub fn insert_score(scores: &mut Vec<ScoreRecord>, record: ScoreRecord) -> bool {
     let key = record.ranking_key();
+    prune_ranking(scores, &key);
     if !score_qualifies(scores, &key, record.score) {
         return false;
     }
     scores.push(record);
-
-    let comparable_count = scores.iter().filter(|entry| key.matches(entry)).count();
-    if comparable_count <= LOCAL_SCORE_LIMIT {
-        return true;
-    }
-
-    let worst_index = scores
-        .iter()
-        .enumerate()
-        .filter(|(_, entry)| key.matches(entry))
-        .reduce(|worst, candidate| {
-            if candidate.1.score < worst.1.score
-                || (candidate.1.score == worst.1.score && candidate.0 > worst.0)
-            {
-                candidate
-            } else {
-                worst
-            }
-        })
-        .map(|(index, _)| index)
-        .expect("a count above the limit guarantees a comparable score");
-    scores.remove(worst_index);
+    prune_ranking(scores, &key);
     true
+}
+
+fn prune_ranking(scores: &mut Vec<ScoreRecord>, key: &ScoreRankingKey) {
+    while scores.iter().filter(|entry| key.matches(entry)).count() > LOCAL_SCORE_LIMIT {
+        let worst_index = scores
+            .iter()
+            .enumerate()
+            .filter(|(_, entry)| key.matches(entry))
+            .reduce(|worst, candidate| {
+                if candidate.1.score < worst.1.score
+                    || (candidate.1.score == worst.1.score && candidate.0 > worst.0)
+                {
+                    candidate
+                } else {
+                    worst
+                }
+            })
+            .map(|(index, _)| index)
+            .expect("a count above the limit guarantees a comparable score");
+        scores.remove(worst_index);
+    }
 }
 
 /// Small set of machine state remembered between sessions.
@@ -375,5 +376,17 @@ mod tests {
                 .iter()
                 .all(|record| record.recorded_at_unix_seconds != 9)
         );
+    }
+
+    #[test]
+    fn insertion_repairs_an_oversized_edited_ranking() {
+        let mut scores = (0..LOCAL_SCORE_LIMIT + 3)
+            .map(|index| score(1_000 - index as u64, index as i64))
+            .collect::<Vec<_>>();
+
+        assert!(insert_score(&mut scores, score(2_000, 99)));
+        assert_eq!(scores.len(), LOCAL_SCORE_LIMIT);
+        assert!(scores.iter().any(|record| record.score == 2_000));
+        assert!(scores.iter().all(|record| record.score >= 992));
     }
 }

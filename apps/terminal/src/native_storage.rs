@@ -78,7 +78,8 @@ impl ByteStorage for NativeByteStorage {
             key.file_name(),
             std::process::id()
         );
-        atomic_write(&directory, &directory.join(file_name), data)
+        atomic_write(&directory, &directory.join(file_name), data)?;
+        self.remove(key)
     }
 }
 
@@ -270,6 +271,7 @@ mod tests {
         let (directory, mut storage) = test_storage("corrupt");
         let corrupt = b"not valid structured data";
 
+        storage.write(StorageKey::SystemState, corrupt).unwrap();
         storage
             .preserve_corrupt(StorageKey::SystemState, corrupt)
             .unwrap();
@@ -288,6 +290,7 @@ mod tests {
                 .starts_with("system-state.json.")
         );
         assert_eq!(fs::read(&files[0]).unwrap(), corrupt);
+        assert_eq!(storage.read(StorageKey::SystemState).unwrap(), None);
 
         fs::remove_dir_all(directory).unwrap();
     }

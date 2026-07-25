@@ -197,12 +197,12 @@ impl SignalStack {
     }
 
     /// Advances one fixed simulation tick.
-    pub fn update(&mut self, step: SimulationStep) {
+    pub fn update(&mut self, _step: SimulationStep) {
         if !matches!(self.status, SignalStackStatus::Running) {
             self.queued_actions.clear();
             return;
         }
-        self.tick = step.tick;
+        self.tick = SimulationTick(self.tick.0.saturating_add(1));
 
         if self.pending_spawn {
             self.pending_spawn = false;
@@ -1176,5 +1176,18 @@ mod tests {
         }
         assert_eq!(first.state_hash(), second.state_hash());
         assert_eq!(first.state_hash(), StateHash(17_381_950_295_200_256_755));
+    }
+
+    #[test]
+    fn duration_ticks_are_relative_to_the_run() {
+        let mut game = SignalStack::new(RunSeed(1));
+        game.update(SimulationStep {
+            tick: SimulationTick(10_000),
+        });
+        game.update(SimulationStep {
+            tick: SimulationTick(20_000),
+        });
+
+        assert_eq!(game.tick(), SimulationTick(2));
     }
 }
